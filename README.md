@@ -28,13 +28,16 @@ npm run dev
 |---|---|
 | ← → | 좌우 이동 |
 | Space | 점프 (공중에서 한 번 더 누르면 2단 점프, 짧게 누르면 낮게 점프) |
-| R | 시작 위치로 리스폰 |
+| X | 공격 (앞으로 베기) |
+| R | 시작 위치로 리스폰 (적도 초기화) |
 
 ### 구조
-- `src/data/` — 속도, 중력, 점프력 등 모든 수치(`player.json`, `game.json`)와 레벨(`levels/*.txt`). 튜닝은 여기서
+- `src/data/` — 속도, 중력, 점프력 등 모든 수치(`player.json`, `enemies.json`, `game.json`)와 레벨(`levels/*.txt`). 튜닝은 여기서
 - `src/input.js` — 키보드 입력 (누름/뗌을 프레임 단위로 구분)
 - `src/world.js` — 타일맵 충돌·렌더링
-- `src/player.js` — 캐릭터 물리, 충돌, 점프 로직
+- `src/player.js` — 캐릭터 이동, 점프, 공격, 피격
+- `src/enemy.js` — 테스트용 적 (순찰, 피격, 리스폰)
+- `src/physics.js` — 타일 충돌, 겹침 판정
 - `src/main.js` — 고정 시간 간격 게임 루프, 카메라
 
 프로젝트 규칙과 컨셉은 [CLAUDE.md](CLAUDE.md) 참고.

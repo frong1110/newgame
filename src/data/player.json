@@ -1,13 +1,11 @@
 {
   "width": 24,
   "height": 30,
-
   "moveSpeed": 260,
   "groundAccel": 2400,
   "groundDecel": 2800,
   "airAccel": 1600,
   "airDecel": 900,
-
   "gravity": 2200,
   "maxFallSpeed": 900,
   "jumpSpeed": 720,
@@ -16,8 +14,27 @@
   "jumpCut": 0.45,
   "coyoteTime": 0.1,
   "jumpBuffer": 0.12,
-
   "jumpStretch": 0.3,
   "landSquash": 0.25,
-  "squashRecovery": 2.5
+  "squashRecovery": 2.5,
+  "attack": {
+    "startup": 0.06,
+    "active": 0.1,
+    "recovery": 0.14,
+    "rangeWidth": 44,
+    "rangeHeight": 36,
+    "swordLength": 34,
+    "damage": 1,
+    "knockbackX": 320,
+    "knockbackY": 260,
+    "hitstop": 0.07,
+    "moveSpeedMultiplier": 0.6
+  },
+  "hurt": {
+    "knockbackX": 340,
+    "knockbackY": 420,
+    "stunTime": 0.25,
+    "invincibleTime": 0.9,
+    "blinkInterval": 0.08
+  }
 }

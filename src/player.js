@@ -1,10 +1,14 @@
 import { PLAYER, GAME } from './data/index.js';
 import { Input } from './input.js';
+import { moveAndCollide, approach } from './physics.js';
+
+const ATTACK_KEY = 'KeyX';
 
 export class Player {
   constructor(x, y) {
     this.w = PLAYER.width;
     this.h = PLAYER.height;
+    this.attackId = 0; // 공격할 때마다 증가. 적이 같은 공격에 중복으로 맞지 않게 하는 용도
     this.respawn(x, y);
   }
 
@@ -19,18 +23,64 @@ export class Player {
     this.jumpBufferTimer = 0;
     this.facing = 1;
     this.squash = 0; // 점프/착지 연출용
+    this.attackTimer = 0; // 남은 공격 시간 (0이면 공격 중 아님)
+    this.stunTimer = 0;
+    this.invincibleTimer = 0;
+  }
+
+  get attackDuration() {
+    const A = PLAYER.attack;
+    return A.startup + A.active + A.recovery;
+  }
+
+  // 공격 시작 후 경과 시간 (공격 중이 아니면 -1)
+  get attackElapsed() {
+    return this.attackTimer > 0 ? this.attackDuration - this.attackTimer : -1;
+  }
+
+  get isAttackActive() {
+    const A = PLAYER.attack;
+    const t = this.attackElapsed;
+    return t >= A.startup && t < A.startup + A.active;
+  }
+
+  // 공격 판정 영역 (판정 프레임이 아니면 null)
+  getAttackHitbox() {
+    if (!this.isAttackActive) return null;
+    const A = PLAYER.attack;
+    return {
+      x: this.facing > 0 ? this.x + this.w : this.x - A.rangeWidth,
+      y: this.y + this.h / 2 - A.rangeHeight / 2,
+      w: A.rangeWidth,
+      h: A.rangeHeight,
+    };
   }
 
   update(dt, world) {
     const C = PLAYER;
+    const stunned = this.stunTimer > 0;
+    this.stunTimer -= dt;
+    this.invincibleTimer -= dt;
+
+    // --- 공격 ---
+    if (this.attackTimer > 0) this.attackTimer -= dt;
+    if (!stunned && this.attackTimer <= 0 && Input.wasPressed(ATTACK_KEY)) {
+      this.attackTimer = this.attackDuration;
+      this.attackId++;
+    }
+    const attacking = this.attackTimer > 0;
 
     // --- 좌우 이동 ---
-    const dir = (Input.isDown('ArrowRight') ? 1 : 0) - (Input.isDown('ArrowLeft') ? 1 : 0);
-    if (dir !== 0) this.facing = dir;
+    const dir = stunned ? 0 : (Input.isDown('ArrowRight') ? 1 : 0) - (Input.isDown('ArrowLeft') ? 1 : 0);
+    if (dir !== 0 && !attacking) this.facing = dir; // 공격 중에는 방향 고정
+    const maxSpeed = C.moveSpeed * (attacking && this.onGround ? C.attack.moveSpeedMultiplier : 1);
     const accel = this.onGround ? C.groundAccel : C.airAccel;
     const decel = this.onGround ? C.groundDecel : C.airDecel;
-    if (dir !== 0) {
-      this.vx = approach(this.vx, dir * C.moveSpeed, accel * dt);
+    if (stunned) {
+      // 넉백 중에는 조작 불가, 공중 감속만
+      this.vx = approach(this.vx, 0, C.airDecel * dt);
+    } else if (dir !== 0) {
+      this.vx = approach(this.vx, dir * maxSpeed, accel * dt);
     } else {
       this.vx = approach(this.vx, 0, decel * dt);
     }
@@ -48,7 +98,7 @@ export class Player {
     if (Input.wasPressed('Space')) this.jumpBufferTimer = C.jumpBuffer;
     else this.jumpBufferTimer -= dt;
 
-    if (this.jumpBufferTimer > 0) {
+    if (this.jumpBufferTimer > 0 && !stunned) {
       const canGroundJump = this.coyoteTimer > 0 && this.jumpsUsed === 0;
       const canAirJump = !canGroundJump && this.jumpsUsed < C.maxJumps;
       if (canGroundJump) {
@@ -68,61 +118,33 @@ export class Player {
     }
 
     // 스페이스를 일찍 떼면 낮게 점프
-    if (Input.wasReleased('Space') && this.vy < 0) this.vy *= C.jumpCut;
+    if (Input.wasReleased('Space') && this.vy < 0 && !stunned) this.vy *= C.jumpCut;
 
-    // --- 중력 ---
+    // --- 중력 + 충돌 ---
     this.vy = Math.min(this.vy + C.gravity * dt, C.maxFallSpeed);
-
-    // --- 충돌 처리 (축별로 분리) ---
-    this.x += this.vx * dt;
-    this.resolveX(world);
-
     const wasOnGround = this.onGround;
-    this.y += this.vy * dt;
-    this.onGround = false;
-    this.resolveY(world);
-    if (this.onGround && !wasOnGround) this.squash = PLAYER.landSquash;
+    moveAndCollide(this, world, dt);
+    if (this.onGround && !wasOnGround) this.squash = C.landSquash;
 
-    this.squash = approach(this.squash, 0, PLAYER.squashRecovery * dt);
+    this.squash = approach(this.squash, 0, C.squashRecovery * dt);
   }
 
-  resolveX(world) {
-    const T = GAME.tileSize;
-    const top = Math.floor(this.y / T);
-    const bottom = Math.floor((this.y + this.h - 0.01) / T);
-    if (this.vx > 0) {
-      const tx = Math.floor((this.x + this.w) / T);
-      for (let ty = top; ty <= bottom; ty++) {
-        if (world.isSolid(tx, ty)) { this.x = tx * T - this.w; this.vx = 0; return; }
-      }
-    } else if (this.vx < 0) {
-      const tx = Math.floor(this.x / T);
-      for (let ty = top; ty <= bottom; ty++) {
-        if (world.isSolid(tx, ty)) { this.x = (tx + 1) * T; this.vx = 0; return; }
-      }
-    }
-  }
-
-  resolveY(world) {
-    const T = GAME.tileSize;
-    const left = Math.floor(this.x / T);
-    const right = Math.floor((this.x + this.w - 0.01) / T);
-    if (this.vy > 0) {
-      const ty = Math.floor((this.y + this.h) / T);
-      for (let tx = left; tx <= right; tx++) {
-        if (world.isSolid(tx, ty)) {
-          this.y = ty * T - this.h; this.vy = 0; this.onGround = true; return;
-        }
-      }
-    } else if (this.vy < 0) {
-      const ty = Math.floor(this.y / T);
-      for (let tx = left; tx <= right; tx++) {
-        if (world.isSolid(tx, ty)) { this.y = (ty + 1) * T; this.vy = 0; return; }
-      }
-    }
+  // 적과 부딪혔을 때. fromDir: 적 → 플레이어 방향 (+1 / -1)
+  hurt(fromDir) {
+    if (this.invincibleTimer > 0) return false;
+    const H = PLAYER.hurt;
+    this.vx = fromDir * H.knockbackX;
+    this.vy = -H.knockbackY;
+    this.stunTimer = H.stunTime;
+    this.invincibleTimer = H.invincibleTime;
+    this.attackTimer = 0;
+    return true;
   }
 
   draw(ctx, cam) {
+    // 무적 시간 동안 깜빡임
+    if (this.invincibleTimer > 0 && Math.floor(this.invincibleTimer / PLAYER.hurt.blinkInterval) % 2 === 0) return;
+
     // squash > 0: 납작, < 0: 길쭉
     const sx = 1 + this.squash;
     const sy = 1 - this.squash;
@@ -131,7 +153,9 @@ export class Player {
     const px = this.x + this.w / 2 - cam.x;
     const py = this.y + this.h - cam.y; // 발 기준
 
-    ctx.fillStyle = '#ffcc4d';
+    this.drawSword(ctx, px, py - h / 2);
+
+    ctx.fillStyle = this.stunTimer > 0 ? '#ff8a65' : '#ffcc4d';
     ctx.fillRect(px - w / 2, py - h, w, h);
     // 눈 (바라보는 방향 표시)
     ctx.fillStyle = '#222';
@@ -139,9 +163,47 @@ export class Player {
     ctx.fillRect(eyeX - 2, py - h * 0.72, 4, 6);
     ctx.fillRect(eyeX + this.facing * 7 - 2, py - h * 0.72, 4, 6);
   }
-}
 
-export function approach(value, target, delta) {
-  if (value < target) return Math.min(value + delta, target);
-  return Math.max(value - delta, target);
+  // 공격 모션: 준비(뒤로 들어올림) → 판정(앞으로 내려베기 + 궤적) → 회수
+  drawSword(ctx, cx, cy) {
+    const t = this.attackElapsed;
+    if (t < 0) return;
+    const A = PLAYER.attack;
+    const L = A.swordLength;
+    const START = -130, END = 60; // 각도(도). 0 = 정면, 음수 = 위쪽
+
+    let deg;
+    if (t < A.startup) {
+      deg = START - 20 * (t / A.startup); // 살짝 더 젖히며 힘 모으기
+    } else if (t < A.startup + A.active) {
+      const k = (t - A.startup) / A.active;
+      deg = START - 20 + (END - START + 20) * (1 - (1 - k) * (1 - k)); // 빠르게 휘두르기
+    } else {
+      deg = END;
+    }
+    const toXY = (d) => {
+      const r = (d * Math.PI) / 180;
+      return [cx + this.facing * Math.cos(r) * L, cy + Math.sin(r) * L];
+    };
+
+    // 베기 궤적
+    if (this.isAttackActive) {
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      for (let d = START - 20; d <= deg; d += 8) ctx.lineTo(...toXY(d));
+      ctx.lineTo(...toXY(deg));
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    const fade = t > A.startup + A.active ? 1 - (t - A.startup - A.active) / A.recovery : 1;
+    ctx.strokeStyle = `rgba(220,230,255,${fade})`;
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(...toXY(deg));
+    ctx.stroke();
+  }
 }

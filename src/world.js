@@ -1,4 +1,4 @@
-// 타일 기반 레벨. '#' = 땅, '.' = 빈칸, 'P' = 플레이어 시작 위치
+// 타일 기반 레벨. '#' = 땅, '.' = 빈칸, 'P' = 플레이어 시작 위치, 'E' = 테스트 적
 // 레벨 데이터는 src/data/levels/*.txt 에 있다.
 import { GAME } from './data/index.js';
 
@@ -8,9 +8,13 @@ export class World {
     this.height = rows.length;
     this.width = rows[0].length;
     this.spawn = { x: 0, y: 0 };
+    this.enemySpawns = []; // 'E' 위치
     rows.forEach((row, ty) => {
-      const tx = row.indexOf('P');
-      if (tx >= 0) this.spawn = { x: tx * GAME.tileSize, y: ty * GAME.tileSize };
+      [...row].forEach((ch, tx) => {
+        const pos = { x: tx * GAME.tileSize, y: ty * GAME.tileSize };
+        if (ch === 'P') this.spawn = pos;
+        else if (ch === 'E') this.enemySpawns.push(pos);
+      });
     });
   }
 
