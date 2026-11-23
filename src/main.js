@@ -98,6 +98,8 @@ function render() {
   ctx.fillText(`ground: ${player.onGround}`, 12, 40);
   const comboLabel = player.attackTimer > 0 ? `${player.comboStep + 1}/${PLAYER.attack.combo.length} ${player.step.name}` : '-';
   ctx.fillText(`combo: ${comboLabel}`, 12, 58);
+  const dashReady = player.dashCooldownTimer <= 0 && (player.onGround || player.airDashesUsed < PLAYER.dash.maxAirDashes);
+  ctx.fillText(`dash: ${player.isDashing ? 'DASH' : dashReady ? 'ready' : '...'}${player.dodgeTimer > 0 ? ' (무적)' : ''}`, 12, 76);
 }
 
 function frame(now) {
