@@ -214,7 +214,7 @@ export class Player {
     ctx.fillRect(eyeX + this.facing * 7 - 2, py - h * 0.72, 4, 6);
   }
 
-  // 공격 모션: 준비(반대쪽으로 젖히기) → 판정(앞쪽으로 크게 휘두르며 초승달 궤적) → 회수(궤적이 사라짐)
+  // 공격 모션: 준비(반대쪽으로 젖히기) → 판정(앞쪽으로 길고 납작한 아치 궤적) → 회수(궤적이 사라짐)
   drawSword(ctx, cx, cy) {
     const t = this.attackElapsed;
     if (t < 0) return;
@@ -235,9 +235,10 @@ export class Player {
     } else {
       deg = to;
     }
+    // 타원형 궤적: 가로(앞)로 늘리고 세로로 눌러서 납작한 아치를 만든다
     const at = (d, r) => {
       const rad = (d * Math.PI) / 180;
-      return [ox + this.facing * Math.cos(rad) * r, cy + Math.sin(rad) * r];
+      return [ox + this.facing * Math.cos(rad) * r * A.arcScaleX, cy + Math.sin(rad) * r * A.arcScaleY];
     };
 
     // 초승달 궤적: 바깥 호(칼끝) ~ 안쪽 호 사이를 채운다
