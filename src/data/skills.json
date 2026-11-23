@@ -1,4 +1,5 @@
 {
+  "pickOnRoomClear": false,
   "choiceCount": 3,
   "roomClearDelay": 0.7,
   "trees": {

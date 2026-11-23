@@ -5,7 +5,7 @@ import { Player } from './player.js';
 import { Enemy } from './enemy.js';
 import { overlaps } from './physics.js';
 import { SkillTree } from './skills.js';
-import { drawChoicePanel, drawTreePanel } from './skillUI.js';
+import { drawChoicePanel, drawTreePanel, hitTestTree } from './skillUI.js';
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -28,11 +28,42 @@ let room = 1;
 let clearTimer = -1; // 적을 모두 처치한 뒤 선택 창이 뜨기까지 남은 시간
 let choices = [];
 let selected = 0;
+let treeCursor = 0; // 스킬 트리 화면에서 키보드로 고른 스킬 순서
+let pendingClick = null; // 캔버스 좌표로 바꾼 마우스 클릭
+
+canvas.addEventListener('click', (e) => {
+  const r = canvas.getBoundingClientRect();
+  pendingClick = { x: ((e.clientX - r.left) / r.width) * canvas.width, y: ((e.clientY - r.top) / r.height) * canvas.height };
+});
+
+function applySkills() {
+  player.stats = skillTree.stats;
+}
+
+// 스킬 트리 화면 (테스트용): 클릭 또는 ↑↓ + Enter 로 배우기/해제
+function updateTree() {
+  const ids = skillTree.orderedIds();
+  if (Input.wasPressed('ArrowDown') || Input.wasPressed('ArrowRight')) treeCursor = (treeCursor + 1) % ids.length;
+  if (Input.wasPressed('ArrowUp') || Input.wasPressed('ArrowLeft')) treeCursor = (treeCursor + ids.length - 1) % ids.length;
+  if (['Enter', 'Space', 'KeyX'].some((k) => Input.wasPressed(k))) {
+    skillTree.toggle(ids[treeCursor]);
+    applySkills();
+  }
+  if (pendingClick) {
+    const id = hitTestTree(skillTree, pendingClick.x, pendingClick.y);
+    if (id) {
+      treeCursor = ids.indexOf(id);
+      skillTree.toggle(id);
+      applySkills();
+    }
+  }
+  pendingClick = null;
+}
 
 // 한 판 초기화 (죽음 대신 R). 스킬도 모두 사라진다
 function resetRun() {
   skillTree.reset();
-  player.stats = skillTree.stats;
+  applySkills();
   player.respawn(world.spawn.x, world.spawn.y);
   enemies.forEach((e) => e.reset());
   room = 1;
@@ -50,7 +81,7 @@ function pickSkill(i) {
   const s = choices[i];
   if (!s) return;
   skillTree.learn(s.id);
-  player.stats = skillTree.stats;
+  applySkills();
   nextRoom();
 }
 
@@ -69,6 +100,8 @@ function updateRoomClear(dt) {
   clearTimer -= dt;
   if (clearTimer > 0) return;
   clearTimer = -1;
+  // 프로토타입에서는 스킬을 트리 화면(K)에서 직접 고르므로 선택 창을 끌 수 있다 (skills.json pickOnRoomClear)
+  if (!SKILLS.pickOnRoomClear) return nextRoom();
   choices = skillTree.randomChoices();
   selected = 0;
   if (choices.length) mode = 'choice';
@@ -83,7 +116,11 @@ function update(dt) {
   }
 
   if (Input.wasPressed('KeyK') && mode !== 'choice') mode = mode === 'tree' ? 'play' : 'tree';
-  if (mode === 'tree') return Input.endFrame();
+  if (mode === 'tree') {
+    updateTree();
+    return Input.endFrame();
+  }
+  pendingClick = null;
   if (mode === 'choice') {
     updateChoice();
     return Input.endFrame();
@@ -174,7 +211,7 @@ function render() {
 
 function renderOverlay() {
   if (mode === 'choice') drawChoicePanel(ctx, choices, selected, skillTree, room);
-  else if (mode === 'tree') drawTreePanel(ctx, skillTree);
+  else if (mode === 'tree') drawTreePanel(ctx, skillTree, skillTree.orderedIds()[treeCursor]);
 }
 
 function frame(now) {

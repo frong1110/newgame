@@ -41,6 +41,33 @@ export class SkillTree {
     return true;
   }
 
+  // 테스트용: 선행 스킬까지 한 번에 배우기
+  learnWithRequirements(id) {
+    for (const r of this.byId[id].requires) if (!this.owned.has(r)) this.learnWithRequirements(r);
+    return this.learn(id);
+  }
+
+  // 테스트용: 스킬과, 그 스킬이 있어야 하는 스킬들까지 해제
+  unlearn(id) {
+    if (!this.owned.has(id)) return false;
+    this.owned.delete(id);
+    for (const other of [...this.owned]) {
+      if (this.byId[other].requires.includes(id)) this.unlearn(other);
+    }
+    this.stats = this.computeStats();
+    return true;
+  }
+
+  // 스킬 트리 화면에서 누를 때: 있으면 해제, 없으면 (선행 스킬 포함) 배우기
+  toggle(id) {
+    return this.owned.has(id) ? this.unlearn(id) : this.learnWithRequirements(id);
+  }
+
+  // 트리 화면에 그리는 순서대로 나열한 스킬 id
+  orderedIds() {
+    return Object.values(this.trees).flatMap((t) => t.skills.map((s) => s.id));
+  }
+
   // 배울 수 있는 스킬 중 무작위 후보 (최대 choiceCount 개)
   randomChoices(rng = Math.random) {
     const pool = this.learnable();

@@ -58,48 +58,69 @@ export function drawChoicePanel(ctx, choices, selected, skillTree, room) {
   text(ctx, '1·2·3 또는 ←→ 로 고르고 Enter / Space / X 로 확정', W / 2, 430, { size: 14, color: '#8fa3bb', align: 'center' });
 }
 
-export function drawTreePanel(ctx, skillTree) {
-  dim(ctx, 0.82);
-  text(ctx, '스킬 트리', W / 2, 60, { size: 28, bold: true, align: 'center' });
-  text(ctx, '방을 클리어하면 배울 수 있는 스킬 중에서 후보가 나옵니다 · 죽으면(R) 초기화', W / 2, 88, { size: 13, color: '#8fa3bb', align: 'center' });
-
-  const nw = 260, nh = 74, colGap = 50, rowGap = 36;
+// 트리 화면의 노드 위치 계산 (그리기와 클릭 판정이 같이 쓴다)
+const NODE_W = 260, NODE_H = 74, COL_GAP = 50, ROW_GAP = 36;
+export function treeLayout(skillTree) {
+  const headers = [];
+  const nodes = [];
   let top = 130;
   for (const [, tree] of Object.entries(skillTree.trees)) {
-    text(ctx, `${tree.name} 트리`, 60, top, { size: 18, bold: true, color: '#78d6ff' });
+    headers.push({ name: tree.name, y: top });
     const cols = Math.max(...tree.skills.map((s) => s.pos[0])) + 1;
-    const left = W / 2 - (cols * nw + (cols - 1) * colGap) / 2;
-    const rect = (s) => ({ x: left + s.pos[0] * (nw + colGap), y: top + 24 + s.pos[1] * (nh + rowGap) });
-
-    // 선행 관계 선
+    const left = W / 2 - (cols * NODE_W + (cols - 1) * COL_GAP) / 2;
     for (const s of tree.skills) {
-      const b = rect(s);
-      for (const r of s.requires) {
-        const a = rect(skillTree.byId[r]);
-        ctx.strokeStyle = skillTree.has(r) ? '#ffcc4d' : '#4a5a70';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(a.x + nw / 2, a.y + nh);
-        ctx.lineTo(b.x + nw / 2, b.y);
-        ctx.stroke();
-      }
-    }
-    // 노드
-    for (const s of tree.skills) {
-      const { x, y } = rect(s);
-      const owned = skillTree.has(s.id);
-      const open = skillTree.isLearnable(s.id);
-      ctx.fillStyle = owned ? '#5a4a1a' : open ? '#22324a' : '#161d28';
-      ctx.fillRect(x, y, nw, nh);
-      ctx.strokeStyle = owned ? '#ffcc4d' : open ? '#cfd8e3' : '#3a4656';
-      ctx.lineWidth = owned ? 3 : 1;
-      ctx.strokeRect(x + 0.5, y + 0.5, nw - 1, nh - 1);
-      const color = owned ? '#ffcc4d' : open ? '#fff' : '#6b7a8c';
-      text(ctx, s.name, x + nw / 2, y + 26, { size: 16, bold: true, color, align: 'center' });
-      wrapText(ctx, s.description, x + nw / 2, y + 46, nw - 20, 16, { size: 12, color: owned || open ? '#cfd8e3' : '#56657a' });
+      nodes.push({ skill: s, x: left + s.pos[0] * (NODE_W + COL_GAP), y: top + 24 + s.pos[1] * (NODE_H + ROW_GAP), w: NODE_W, h: NODE_H });
     }
     const rows = Math.max(...tree.skills.map((s) => s.pos[1])) + 1;
-    top += 24 + rows * (nh + rowGap) + 20;
+    top += 24 + rows * (NODE_H + ROW_GAP) + 20;
+  }
+  return { headers, nodes };
+}
+
+// 캔버스 좌표 (x, y) 에 있는 스킬 id (없으면 null)
+export function hitTestTree(skillTree, x, y) {
+  const n = treeLayout(skillTree).nodes.find((n) => x >= n.x && x < n.x + n.w && y >= n.y && y < n.y + n.h);
+  return n ? n.skill.id : null;
+}
+
+export function drawTreePanel(ctx, skillTree, cursorId) {
+  dim(ctx, 0.82);
+  text(ctx, '스킬 트리', W / 2, 60, { size: 28, bold: true, align: 'center' });
+  text(ctx, '테스트용: 스킬을 클릭하거나 ↑↓ + Enter 로 배우기 / 해제 · R 초기화', W / 2, 88, { size: 13, color: '#8fa3bb', align: 'center' });
+
+  const { headers, nodes } = treeLayout(skillTree);
+  const rectOf = Object.fromEntries(nodes.map((n) => [n.skill.id, n]));
+  for (const h of headers) text(ctx, `${h.name} 트리`, 60, h.y, { size: 18, bold: true, color: '#78d6ff' });
+
+  // 선행 관계 선
+  for (const { skill: s, x, y, w } of nodes) {
+    for (const r of s.requires) {
+      const a = rectOf[r];
+      ctx.strokeStyle = skillTree.has(r) ? '#ffcc4d' : '#4a5a70';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(a.x + a.w / 2, a.y + a.h);
+      ctx.lineTo(x + w / 2, y);
+      ctx.stroke();
+    }
+  }
+  // 노드
+  for (const { skill: s, x, y, w: nw, h: nh } of nodes) {
+    const owned = skillTree.has(s.id);
+    const open = skillTree.isLearnable(s.id);
+    ctx.fillStyle = owned ? '#5a4a1a' : open ? '#22324a' : '#161d28';
+    ctx.fillRect(x, y, nw, nh);
+    ctx.strokeStyle = owned ? '#ffcc4d' : open ? '#cfd8e3' : '#3a4656';
+    ctx.lineWidth = owned ? 3 : 1;
+    ctx.strokeRect(x + 0.5, y + 0.5, nw - 1, nh - 1);
+    if (s.id === cursorId) {
+      ctx.strokeStyle = '#78d6ff';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x - 4.5, y - 4.5, nw + 9, nh + 9);
+    }
+    const color = owned ? '#ffcc4d' : open ? '#fff' : '#6b7a8c';
+    text(ctx, s.name, x + nw / 2, y + 26, { size: 16, bold: true, color, align: 'center' });
+    wrapText(ctx, s.description, x + nw / 2, y + 46, nw - 20, 16, { size: 12, color: owned || open ? '#cfd8e3' : '#56657a' });
   }
 
   // 범례

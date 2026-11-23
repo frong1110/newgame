@@ -1,5 +1,6 @@
 // 사슬 (대시 트리 2·3번째 스킬). 대시 키로 사슬을 던진다.
-//   던지기(throw) → 지형에 박히면: 그 위치로 빠르게 날아감(zip)
+//   던지기(throw) → 걸리면 잠깐 멈칫(latch: 사슬이 팽팽해지며 떨림, 플레이어 정지) → 아래 동작
+//                 → 지형에 박히면: 그 위치로 빠르게 날아감(zip)
 //                 → 적에게 닿으면: onEnemy 가 'zip' 이면 적에게 날아가 붙으며 피해,
 //                                   'pull' 이면 적을 내 쪽으로 끌어오며 피해
 //                 → 사거리 끝까지 아무것도 없으면: 되감기(retract)
@@ -11,7 +12,7 @@ const SUBSTEP = 4; // 사슬 끝이 한 번에 움직이는 최대 거리(px). �
 
 export class Chain {
   constructor() {
-    this.phase = null; // null | 'throw' | 'zip' | 'pull' | 'retract'
+    this.phase = null; // null | 'throw' | 'latch' | 'zip' | 'pull' | 'retract'
     this.count = 0;
     this.hitstop = 0;
   }
@@ -22,6 +23,11 @@ export class Chain {
 
   get zipping() {
     return this.phase === 'zip';
+  }
+
+  // 플레이어 조작을 막는 단계 (멈칫 + 날아가기)
+  get locksPlayer() {
+    return this.phase === 'latch' || this.phase === 'zip';
   }
 
   start(p, dx, dy) {
@@ -55,6 +61,7 @@ export class Chain {
     const C = p.stats.chain;
     if (this.phase === 'throw') this.updateThrow(dt, p, world, enemies, C);
     else if (this.phase === 'retract') this.updateRetract(dt, p, C);
+    else if (this.phase === 'latch') this.updateLatch(dt, p, C);
     else if (this.phase === 'zip') this.updateZip(dt, p, world, C);
     else if (this.phase === 'pull') this.updatePull(dt, p, C);
   }
@@ -76,24 +83,44 @@ export class Chain {
       const enemy = enemies.find((e) => e.alive && overlaps(hook, e));
       if (enemy) {
         this.target = enemy;
-        this.timer = 0;
-        if (C.onEnemy === 'pull') {
-          this.phase = 'pull';
-          enemy.pull = { x: 0, y: 0, speed: C.pullSpeed };
-        } else {
-          this.phase = 'zip';
-        }
-        return;
+        const pulling = C.onEnemy === 'pull';
+        // 멈칫하는 동안 적도 그 자리에 붙잡아 둔다 (속도 0 으로 끌기)
+        const [ex, ey] = center(enemy);
+        enemy.pull = { x: ex, y: ey, speed: 0 };
+        enemy.flashTimer = enemy.stats.hitFlashTime;
+        return this.latch(pulling ? 'pull' : 'zip', pulling ? C.pullLatchTime : C.latchTime);
       }
       const T = GAME.tileSize;
       if (world.isSolid(Math.floor(this.hx / T), Math.floor(this.hy / T))) {
         // 박힌 지점에서 살짝 물러난 곳을 목표로 (몸이 지형에 끼지 않게)
         this.anchor = { x: this.hx - this.dx * (p.w / 2 + 2), y: this.hy - this.dy * (p.h / 2 + 2) };
-        this.phase = 'zip';
-        this.timer = 0;
-        return;
+        return this.latch('zip', C.latchTime);
       }
     }
+  }
+
+  latch(next, time) {
+    this.phase = 'latch';
+    this.next = next;
+    this.timer = time;
+    this.latchTotal = time;
+  }
+
+  // 걸린 직후 멈칫: 플레이어는 공중에 정지(무적), 끝나면 날아가거나 끌어오기 시작
+  updateLatch(dt, p, C) {
+    p.vx = 0;
+    p.vy = 0;
+    p.dodgeTimer = Math.max(p.dodgeTimer, C.invincibleExtra);
+    if (this.target) {
+      if (!this.target.alive) return this.cancel();
+      [this.hx, this.hy] = center(this.target);
+    }
+    this.timer -= dt;
+    if (this.timer > 0) return;
+    this.phase = this.next;
+    this.timer = 0;
+    if (this.phase === 'pull') this.target.pull.speed = C.pullSpeed;
+    else if (this.target) this.target.pull = null; // 적에게 날아갈 때는 적을 놓아준다
   }
 
   updateRetract(dt, p, C) {
@@ -183,9 +210,12 @@ export class Chain {
     if (!this.active) return;
     const [cx, cy] = center(p);
     const x0 = cx - cam.x, y0 = cy - cam.y;
-    const x1 = this.hx - cam.x, y1 = this.hy - cam.y;
-    ctx.strokeStyle = '#9aa7b8';
-    ctx.lineWidth = 2;
+    const latching = this.phase === 'latch';
+    // 멈칫하는 동안 사슬 끝이 떨리고, 사슬이 굵고 밝아진다
+    const shake = latching ? p.stats.chain.latchShake * (Math.random() * 2 - 1) : 0;
+    const x1 = this.hx - cam.x + shake, y1 = this.hy - cam.y + shake;
+    ctx.strokeStyle = latching ? '#ffffff' : '#9aa7b8';
+    ctx.lineWidth = latching ? 3 : 2;
     ctx.beginPath();
     ctx.moveTo(x0, y0);
     ctx.lineTo(x1, y1);
@@ -198,8 +228,9 @@ export class Chain {
       ctx.fillRect(x0 + (x1 - x0) * k - 2, y0 + (y1 - y0) * k - 2, 4, 4);
     }
     // 갈고리 머리
-    ctx.fillStyle = '#e8eef5';
-    ctx.fillRect(x1 - 4, y1 - 4, 8, 8);
+    ctx.fillStyle = latching ? '#ffcc4d' : '#e8eef5';
+    const hs = latching ? 5 : 4;
+    ctx.fillRect(x1 - hs, y1 - hs, hs * 2, hs * 2);
   }
 }
 
