@@ -1,0 +1,62 @@
+{
+  "choiceCount": 3,
+  "roomClearDelay": 0.7,
+  "trees": {
+    "dash": {
+      "name": "대시",
+      "skills": [
+        {
+          "id": "dash_long",
+          "name": "롱 대시",
+          "description": "대시 거리 +35%",
+          "requires": [],
+          "pos": [0, 0],
+          "effects": [{ "stat": "dash.speed", "op": "mul", "value": 1.35 }]
+        },
+        {
+          "id": "dash_air",
+          "name": "이중 공중 대시",
+          "description": "공중 대시 횟수 +1",
+          "requires": ["dash_long"],
+          "pos": [0, 1],
+          "effects": [{ "stat": "dash.maxAirDashes", "op": "add", "value": 1 }]
+        },
+        {
+          "id": "dash_quick",
+          "name": "빠른 재충전",
+          "description": "대시 대기시간 -50%",
+          "requires": ["dash_long"],
+          "pos": [1, 1],
+          "effects": [{ "stat": "dash.cooldown", "op": "mul", "value": 0.5 }]
+        },
+        {
+          "id": "dash_strike",
+          "name": "돌진 베기",
+          "description": "대시로 통과한 적에게 피해 1",
+          "requires": [],
+          "pos": [2, 0],
+          "effects": [{ "stat": "dash.strikeDamage", "op": "add", "value": 1 }]
+        },
+        {
+          "id": "dash_blade",
+          "name": "칼날 질주",
+          "description": "돌진 베기 피해 +1, 넉백 +50%",
+          "requires": ["dash_strike"],
+          "pos": [2, 1],
+          "effects": [
+            { "stat": "dash.strikeDamage", "op": "add", "value": 1 },
+            { "stat": "dash.strikeKnockbackX", "op": "mul", "value": 1.5 }
+          ]
+        },
+        {
+          "id": "dash_shadow",
+          "name": "그림자 회피",
+          "description": "대시 후 무적 시간 +0.25초",
+          "requires": ["dash_strike"],
+          "pos": [3, 1],
+          "effects": [{ "stat": "dash.invincibleExtra", "op": "add", "value": 0.25 }]
+        }
+      ]
+    }
+  }
+}

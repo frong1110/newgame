@@ -1,5 +1,5 @@
 // 테스트용 적. 좌우로 순찰하다가 벽이나 낭떠러지에서 돌아선다.
-// 맞으면 넉백·경직, 체력이 0이 되면 사라졌다가 일정 시간 뒤 제자리에서 다시 나타난다.
+// 맞으면 넉백·경직, 체력이 0이 되면 사라진다. (respawnTime > 0 이면 그 시간 뒤 다시 나타남)
 import { ENEMIES, GAME } from './data/index.js';
 import { moveAndCollide, approach } from './physics.js';
 
@@ -30,8 +30,11 @@ export class Enemy {
   update(dt, world) {
     const S = this.stats;
     if (!this.alive) {
-      this.respawnTimer -= dt;
-      if (this.respawnTimer <= 0) this.reset();
+      // respawnTime 이 0 이면 다시 나타나지 않음 (방 클리어 방식)
+      if (S.respawnTime > 0) {
+        this.respawnTimer -= dt;
+        if (this.respawnTimer <= 0) this.reset();
+      }
       return;
     }
 
