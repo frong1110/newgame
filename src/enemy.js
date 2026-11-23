@@ -1,5 +1,5 @@
 // 테스트용 적. 좌우로 순찰하다가 벽이나 낭떠러지에서 돌아선다.
-// 맞으면 넉백·경직, 체력이 0이 되면 사라졌다가 일정 시간 뒤 제자리에서 다시 나타난다.
+// 맞으면 넉백·경직, 체력이 0이 되면 사라진다. (respawnTime > 0 이면 그 시간 뒤 다시 나타남)
 import { ENEMIES, GAME } from './data/index.js';
 import { moveAndCollide, approach } from './physics.js';
 
@@ -25,17 +25,33 @@ export class Enemy {
     this.flashTimer = 0;
     this.respawnTimer = 0;
     this.lastHitId = -1; // 같은 공격에 여러 번 맞지 않도록
+    this.pull = null; // 사슬에 끌려오는 중이면 { x, y, speed } (목표 지점)
   }
 
   update(dt, world) {
     const S = this.stats;
     if (!this.alive) {
-      this.respawnTimer -= dt;
-      if (this.respawnTimer <= 0) this.reset();
+      // respawnTime 이 0 이면 다시 나타나지 않음 (방 클리어 방식)
+      if (S.respawnTime > 0) {
+        this.respawnTimer -= dt;
+        if (this.respawnTimer <= 0) this.reset();
+      }
       return;
     }
 
     this.flashTimer -= dt;
+    if (this.pull) {
+      // 사슬에 끌려오는 중: 중력·순찰 무시하고 목표 지점으로 직진
+      const dx = this.pull.x - (this.x + this.w / 2);
+      const dy = this.pull.y - (this.y + this.h / 2);
+      const d = Math.hypot(dx, dy) || 1;
+      const step = Math.min(this.pull.speed * dt, d);
+      this.vx = (dx / d) * (step / dt);
+      this.vy = (dy / d) * (step / dt);
+      this.stunTimer = Math.max(this.stunTimer, dt * 2); // 끌려오는 동안은 몸통 피해 없음
+      moveAndCollide(this, world, dt);
+      return;
+    }
     if (this.stunTimer > 0) {
       this.stunTimer -= dt;
       this.vx = approach(this.vx, 0, S.knockbackDecel * dt);

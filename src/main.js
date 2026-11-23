@@ -1,15 +1,18 @@
-import { GAME, LEVELS, PLAYER } from './data/index.js';
+import { GAME, LEVELS, PLAYER, SKILLS } from './data/index.js';
 import { Input } from './input.js';
 import { World } from './world.js';
 import { Player } from './player.js';
 import { Enemy } from './enemy.js';
 import { overlaps } from './physics.js';
+import { SkillTree } from './skills.js';
+import { drawChoicePanel, drawTreePanel } from './skillUI.js';
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
 const world = new World(LEVELS.level1);
-const player = new Player(world.spawn.x, world.spawn.y);
+const skillTree = new SkillTree(PLAYER);
+const player = new Player(world.spawn.x, world.spawn.y, skillTree.stats);
 const enemies = world.enemySpawns.map((pos) => new Enemy('dummy', pos));
 const cam = { x: 0, y: 0, w: canvas.width, h: canvas.height };
 const puffs = []; // 2단 점프 이펙트
@@ -19,6 +22,59 @@ let acc = 0;
 let last = performance.now();
 let hitstopTimer = 0; // 타격 순간 잠깐 멈추는 연출
 
+// 게임 모드: 'play' | 'choice'(방 클리어 후 스킬 고르기) | 'tree'(스킬 트리 보기)
+let mode = 'play';
+let room = 1;
+let clearTimer = -1; // 적을 모두 처치한 뒤 선택 창이 뜨기까지 남은 시간
+let choices = [];
+let selected = 0;
+
+// 한 판 초기화 (죽음 대신 R). 스킬도 모두 사라진다
+function resetRun() {
+  skillTree.reset();
+  player.stats = skillTree.stats;
+  player.respawn(world.spawn.x, world.spawn.y);
+  enemies.forEach((e) => e.reset());
+  room = 1;
+  clearTimer = -1;
+  mode = 'play';
+}
+
+function nextRoom() {
+  room++;
+  enemies.forEach((e) => e.reset());
+  mode = 'play';
+}
+
+function pickSkill(i) {
+  const s = choices[i];
+  if (!s) return;
+  skillTree.learn(s.id);
+  player.stats = skillTree.stats;
+  nextRoom();
+}
+
+function updateChoice() {
+  for (let i = 0; i < choices.length; i++) if (Input.wasPressed(`Digit${i + 1}`)) return pickSkill(i);
+  if (Input.wasPressed('ArrowLeft')) selected = (selected + choices.length - 1) % choices.length;
+  if (Input.wasPressed('ArrowRight')) selected = (selected + 1) % choices.length;
+  if (['Enter', 'Space', 'KeyX'].some((k) => Input.wasPressed(k))) pickSkill(selected);
+}
+
+function updateRoomClear(dt) {
+  if (clearTimer < 0) {
+    if (enemies.every((e) => !e.alive)) clearTimer = SKILLS.roomClearDelay;
+    return;
+  }
+  clearTimer -= dt;
+  if (clearTimer > 0) return;
+  clearTimer = -1;
+  choices = skillTree.randomChoices();
+  selected = 0;
+  if (choices.length) mode = 'choice';
+  else nextRoom(); // 더 배울 스킬이 없으면 바로 다음 방
+}
+
 function update(dt) {
   // 히트스톱 중에는 게임을 멈추되 입력은 지우지 않는다 (멈춘 사이 누른 키가 사라지지 않게)
   if (hitstopTimer > 0) {
@@ -26,14 +82,19 @@ function update(dt) {
     return;
   }
 
-  if (Input.wasPressed('KeyR')) {
-    player.respawn(world.spawn.x, world.spawn.y);
-    enemies.forEach((e) => e.reset());
+  if (Input.wasPressed('KeyK') && mode !== 'choice') mode = mode === 'tree' ? 'play' : 'tree';
+  if (mode === 'tree') return Input.endFrame();
+  if (mode === 'choice') {
+    updateChoice();
+    return Input.endFrame();
   }
 
-  player.update(dt, world);
+  if (Input.wasPressed('KeyR')) resetRun();
+
+  player.update(dt, world, enemies);
   for (const e of enemies) e.update(dt, world);
   resolveCombat();
+  updateRoomClear(dt);
 
   if (player.spawnPuff) {
     puffs.push({ x: player.x + player.w / 2, y: player.y + player.h, t: 0 });
@@ -58,6 +119,9 @@ function update(dt) {
 
 function resolveCombat() {
   const hitbox = player.getAttackHitbox();
+  // 사슬로 적을 맞힌 경우
+  const chainHitstop = player.chain.takeHitstop();
+  if (chainHitstop > 0) hitstopTimer = chainHitstop;
   for (const e of enemies) {
     if (!e.alive) continue;
     // 플레이어 공격 → 적
@@ -94,12 +158,23 @@ function render() {
   // 디버그 HUD
   ctx.fillStyle = 'rgba(255,255,255,0.8)';
   ctx.font = '14px monospace';
-  ctx.fillText(`jumps: ${PLAYER.maxJumps - player.jumpsUsed}/${PLAYER.maxJumps}`, 12, 22);
+  ctx.fillText(`jumps: ${player.stats.maxJumps - player.jumpsUsed}/${player.stats.maxJumps}`, 12, 22);
   ctx.fillText(`ground: ${player.onGround}`, 12, 40);
-  const comboLabel = player.attackTimer > 0 ? `${player.comboStep + 1}/${PLAYER.attack.combo.length} ${player.step.name}` : '-';
+  const comboLabel = player.attackTimer > 0 ? `${player.comboStep + 1}/${player.stats.attack.combo.length} ${player.step.name}` : '-';
   ctx.fillText(`combo: ${comboLabel}`, 12, 58);
-  const dashReady = player.dashCooldownTimer <= 0 && (player.onGround || player.airDashesUsed < PLAYER.dash.maxAirDashes);
-  ctx.fillText(`dash: ${player.isDashing ? 'DASH' : dashReady ? 'ready' : '...'}${player.dodgeTimer > 0 ? ' (무적)' : ''}`, 12, 76);
+  const dashReady = player.dashCooldownTimer <= 0 && (player.usesChain || player.onGround || player.airDashesUsed < player.stats.dash.maxAirDashes);
+  ctx.fillText(`room: ${room}   enemies: ${enemies.filter((e) => e.alive).length}/${enemies.length}`, 12, 94);
+  const owned = [...skillTree.owned].map((id) => skillTree.byId[id].name);
+  ctx.textAlign = 'right';
+  ctx.fillText('K: 스킬 트리', canvas.width - 12, 22);
+  owned.forEach((name, i) => ctx.fillText(`· ${name}`, canvas.width - 12, 44 + i * 18));
+  ctx.textAlign = 'left';
+  ctx.fillText(`${player.usesChain ? 'chain' : 'dash'}: ${player.isDashing ? 'GO' : player.chain.active ? player.chain.phase : dashReady ? 'ready' : '...'}${player.dodgeTimer > 0 ? ' (무적)' : ''}`, 12, 76);
+}
+
+function renderOverlay() {
+  if (mode === 'choice') drawChoicePanel(ctx, choices, selected, skillTree, room);
+  else if (mode === 'tree') drawTreePanel(ctx, skillTree);
 }
 
 function frame(now) {
@@ -110,6 +185,7 @@ function frame(now) {
     acc -= STEP;
   }
   render();
+  renderOverlay();
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
@@ -117,4 +193,4 @@ requestAnimationFrame(frame);
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
 // 개발 서버에서만 디버깅/자동 테스트용으로 상태를 노출 (배포 빌드에는 포함되지 않음)
-if (import.meta.env.DEV) window.__game = { player, enemies, world };
+if (import.meta.env.DEV) window.__game = { player, enemies, world, skillTree, get mode() { return mode; }, get room() { return room; }, get choices() { return choices; } };

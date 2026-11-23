@@ -18,7 +18,7 @@
   "landSquash": 0.25,
   "squashRecovery": 2.5,
   "attack": {
-    "inputBuffer": 0.18,
+    "inputBuffer": 0.32,
     "comboWindow": 0.3,
     "moveSpeedMultiplier": 0.4,
     "airLungeMultiplier": 0.5,
@@ -31,7 +31,7 @@
         "name": "내려베기",
         "startup": 0.06,
         "active": 0.09,
-        "recovery": 0.16,
+        "recovery": 0.24,
         "fromAngle": -70,
         "toAngle": 50,
         "swordLength": 52,
@@ -43,13 +43,14 @@
         "damage": 1,
         "knockbackX": 260,
         "knockbackY": 200,
-        "hitstop": 0.06
+        "hitstop": 0.06,
+        "chainDelay": 0.14
       },
       {
         "name": "올려베기",
         "startup": 0.05,
         "active": 0.09,
-        "recovery": 0.16,
+        "recovery": 0.26,
         "fromAngle": 55,
         "toAngle": -60,
         "swordLength": 52,
@@ -61,7 +62,8 @@
         "damage": 1,
         "knockbackX": 240,
         "knockbackY": 340,
-        "hitstop": 0.06
+        "hitstop": 0.06,
+        "chainDelay": 0.17
       },
       {
         "name": "마무리 베기",
@@ -79,7 +81,8 @@
         "damage": 2,
         "knockbackX": 480,
         "knockbackY": 300,
-        "hitstop": 0.11
+        "hitstop": 0.11,
+        "chainDelay": 0.28
       }
     ]
   },
@@ -98,6 +101,35 @@
     "maxAirDashes": 1,
     "invincibleExtra": 0.05,
     "ghostInterval": 0.025,
-    "ghostLifetime": 0.18
+    "ghostLifetime": 0.18,
+    "directions": 2,
+    "mode": "dash",
+    "endSpeedY": 300
+  },
+  "chain": {
+    "onEnemy": "zip",
+    "speed": 1500,
+    "range": 300,
+    "hookSize": 12,
+    "retractSpeed": 2200,
+    "cooldown": 0.5,
+    "zipSpeed": 950,
+    "zipMaxTime": 0.6,
+    "arriveDistance": 14,
+    "endSpeed": 240,
+    "invincibleExtra": 0.08,
+    "attachDistance": 6,
+    "attachBounce": 380,
+    "damage": 1,
+    "knockbackX": 120,
+    "knockbackY": 160,
+    "hitstop": 0.08,
+    "pullSpeed": 900,
+    "pullMaxTime": 0.6,
+    "pullStopGap": 6,
+    "pullDamage": 1,
+    "pullStun": 0.6,
+    "pullKnockbackX": 60,
+    "pullKnockbackY": 120
   }
 }

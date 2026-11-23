@@ -1,15 +1,19 @@
 import { PLAYER, GAME } from './data/index.js';
 import { Input } from './input.js';
 import { moveAndCollide, approach } from './physics.js';
+import { Chain } from './chain.js';
 
 const ATTACK_KEY = 'KeyX';
 const DASH_KEYS = ['ShiftLeft', 'ShiftRight'];
 
 export class Player {
-  constructor(x, y) {
+  constructor(x, y, stats = PLAYER) {
+    // 스킬로 바뀐 수치를 쓰기 위해 PLAYER 대신 this.stats 를 읽는다
+    this.stats = stats;
     this.w = PLAYER.width;
     this.h = PLAYER.height;
     this.attackId = 0; // 공격할 때마다 증가. 적이 같은 공격에 중복으로 맞지 않게 하는 용도
+    this.chain = new Chain(); // 사슬 스킬
     this.respawn(x, y);
   }
 
@@ -29,7 +33,9 @@ export class Player {
     this.comboTimer = 0; // 공격이 끝난 뒤 다음 타를 이어갈 수 있는 남은 시간
     this.attackBufferTimer = 0; // 미리 누른 공격 입력을 기억하는 시간
     this.dashTimer = 0; // 남은 대시 시간 (0보다 크면 대시 중)
-    this.dashDir = 1;
+    this.dashDirX = 1; // 대시 방향 (단위 벡터)
+    this.dashDirY = 0;
+    if (this.chain) this.chain.cancel();
     this.dashCooldownTimer = 0;
     this.dodgeTimer = 0; // 대시 무적 (대시 직후 약간 더 유지)
     this.airDashesUsed = 0;
@@ -40,7 +46,7 @@ export class Player {
   }
 
   get step() {
-    return PLAYER.attack.combo[this.comboStep];
+    return this.stats.attack.combo[this.comboStep];
   }
 
   get attackDuration() {
@@ -62,6 +68,12 @@ export class Player {
   get inRecovery() {
     const S = this.step;
     return this.attackElapsed >= S.startup + S.active;
+  }
+
+  // 다음 콤보 타로 넘어갈 수 있는 시점인지 (회수 동작 중 chainDelay 만큼 지난 뒤)
+  get canChain() {
+    const S = this.step;
+    return this.attackElapsed >= S.startup + S.active + S.chainDelay;
   }
 
   // 공격 판정 영역 (판정 프레임이 아니면 null)
@@ -89,7 +101,7 @@ export class Player {
 
   // 공격 입력·콤보 진행
   updateAttack(dt, stunned) {
-    const A = PLAYER.attack;
+    const A = this.stats.attack;
     const lastStep = A.combo.length - 1;
     const wasAttacking = this.attackTimer > 0;
     if (this.attackTimer > 0) this.attackTimer -= dt;
@@ -107,60 +119,85 @@ export class Player {
     if (stunned || this.dashTimer > 0 || !wantsAttack) return;
 
     if (this.attackTimer > 0) {
-      // 회수 동작 중에 입력이 있으면 회수를 끊고 다음 타로
-      if (this.inRecovery && this.comboStep < lastStep) this.startAttack(this.comboStep + 1);
+      // 회수 동작 중 chainDelay 가 지난 뒤 입력이 있으면 남은 회수를 끊고 다음 타로
+      if (this.canChain && this.comboStep < lastStep) this.startAttack(this.comboStep + 1);
     } else {
       this.startAttack(this.comboTimer > 0 && this.comboStep < lastStep ? this.comboStep + 1 : 0);
     }
   }
 
+  // 대시 또는 사슬로 날아가는 중 (잔상 표시, 조작 불가)
   get isDashing() {
-    return this.dashTimer > 0;
+    return this.dashTimer > 0 || this.chain.zipping;
   }
 
   get isInvincible() {
     return this.invincibleTimer > 0 || this.dodgeTimer > 0;
   }
 
-  canDash(stunned) {
-    if (stunned || this.dashTimer > 0 || this.dashCooldownTimer > 0) return false;
-    return this.onGround || this.airDashesUsed < PLAYER.dash.maxAirDashes;
+  get usesChain() {
+    return this.stats.dash.mode === 'chain';
   }
 
-  startDash(inputDir) {
-    const D = PLAYER.dash;
-    this.dashDir = inputDir !== 0 ? inputDir : this.facing;
-    this.facing = this.dashDir;
+  canDash(stunned) {
+    if (stunned || this.isDashing || this.chain.active || this.dashCooldownTimer > 0) return false;
+    if (this.usesChain) return true; // 사슬은 대기시간만 있고 공중 횟수 제한 없음
+    return this.onGround || this.airDashesUsed < this.stats.dash.maxAirDashes;
+  }
+
+  // 방향키 입력 → 대시/사슬 방향 (단위 벡터). 대각선 대시 스킬이 없으면 좌우만
+  aim(ix, iy) {
+    const y = this.stats.dash.directions === 8 ? iy : 0;
+    if (ix === 0 && y === 0) return [this.facing, 0];
+    const len = Math.hypot(ix, y);
+    return [ix / len, y / len];
+  }
+
+  // 대시 키: 대시, 또는 사슬 스킬이 있으면 사슬 던지기
+  useDash(ix, iy) {
+    const [dx, dy] = this.aim(ix, iy);
+    if (dx !== 0) this.facing = Math.sign(dx);
+    // 공격을 끊고 사용 (캔슬)
+    this.attackTimer = 0;
+    this.comboTimer = 0;
+    this.ghostTimer = 0;
+    if (this.usesChain) {
+      this.chain.start(this, dx, dy);
+      return;
+    }
+    const D = this.stats.dash;
+    this.dashDirX = dx;
+    this.dashDirY = dy;
     this.dashTimer = D.duration;
     this.dashCooldownTimer = D.cooldown;
     this.dodgeTimer = D.duration + D.invincibleExtra;
     if (!this.onGround) this.airDashesUsed++;
-    // 공격을 끊고 대시 (대시 캔슬)
-    this.attackTimer = 0;
-    this.comboTimer = 0;
-    this.ghostTimer = 0;
   }
 
   endDash() {
+    const D = this.stats.dash;
     this.dashTimer = 0;
-    this.vx = this.dashDir * PLAYER.dash.endSpeed;
+    this.vx = this.dashDirX * D.endSpeed;
+    this.vy = this.dashDirY < 0 ? this.dashDirY * D.endSpeedY : 0; // 위로 대시했으면 상승을 조금 남긴다
   }
 
-  // 대시 중 이동: 중력 무시, 일정 속도로 직진. 벽에 막히면 종료
+  // 대시 중 이동: 중력 무시, 일정 속도로 직진. 막혀서 거의 못 움직이면 종료
   updateDash(dt, world) {
-    const D = PLAYER.dash;
+    const D = this.stats.dash;
     this.dashTimer -= dt;
-    this.vx = this.dashDir * D.speed;
-    this.vy = 0;
+    this.vx = this.dashDirX * D.speed;
+    this.vy = this.dashDirY * D.speed;
+    const [x0, y0] = [this.x, this.y];
     moveAndCollide(this, world, dt);
-    if (this.hitWall || this.dashTimer <= 0) this.endDash();
+    const moved = Math.hypot(this.x - x0, this.y - y0);
+    if (moved < D.speed * dt * 0.3 || this.dashTimer <= 0) this.endDash();
   }
 
   updateGhosts(dt) {
-    const D = PLAYER.dash;
+    const D = this.stats.dash;
     for (const g of this.ghosts) g.t += dt;
     while (this.ghosts.length && this.ghosts[0].t > D.ghostLifetime) this.ghosts.shift();
-    if (this.dashTimer > 0) {
+    if (this.isDashing) {
       this.ghostTimer -= dt;
       if (this.ghostTimer <= 0) {
         this.ghosts.push({ x: this.x, y: this.y, facing: this.facing, t: 0 });
@@ -169,8 +206,8 @@ export class Player {
     }
   }
 
-  update(dt, world) {
-    const C = PLAYER;
+  update(dt, world, enemies = []) {
+    const C = this.stats;
     const stunned = this.stunTimer > 0;
     this.stunTimer -= dt;
     this.invincibleTimer -= dt;
@@ -179,11 +216,13 @@ export class Player {
     if (this.onGround) this.airDashesUsed = 0;
     this.updateGhosts(dt);
 
-    // --- 대시 (공중 가능, 무적) ---
+    // --- 대시 / 사슬 ---
     const inputDir = stunned ? 0 : (Input.isDown('ArrowRight') ? 1 : 0) - (Input.isDown('ArrowLeft') ? 1 : 0);
-    if (DASH_KEYS.some((k) => Input.wasPressed(k)) && this.canDash(stunned)) this.startDash(inputDir);
-    if (this.dashTimer > 0) {
-      this.updateDash(dt, world);
+    const inputY = stunned ? 0 : (Input.isDown('ArrowDown') ? 1 : 0) - (Input.isDown('ArrowUp') ? 1 : 0);
+    if (DASH_KEYS.some((k) => Input.wasPressed(k)) && this.canDash(stunned)) this.useDash(inputDir, inputY);
+    if (this.chain.active) this.chain.update(dt, this, world, enemies);
+    if (this.isDashing) {
+      if (this.dashTimer > 0) this.updateDash(dt, world);
       // 대시 중 눌린 점프·공격은 버퍼에 남겨서 대시가 끝나면 이어지게
       if (Input.wasPressed('Space')) this.jumpBufferTimer = C.jumpBuffer;
       if (Input.wasPressed(ATTACK_KEY)) this.attackBufferTimer = C.attack.inputBuffer;
@@ -260,7 +299,7 @@ export class Player {
   // 적과 부딪혔을 때. fromDir: 적 → 플레이어 방향 (+1 / -1)
   hurt(fromDir) {
     if (this.isInvincible) return false; // 피격 무적 또는 대시 회피 중
-    const H = PLAYER.hurt;
+    const H = this.stats.hurt;
     this.vx = fromDir * H.knockbackX;
     this.vy = -H.knockbackY;
     this.stunTimer = H.stunTime;
@@ -269,19 +308,21 @@ export class Player {
     this.comboTimer = 0;
     this.attackBufferTimer = 0;
     this.dashTimer = 0;
+    this.chain.cancel();
     return true;
   }
 
   draw(ctx, cam) {
+    this.chain.draw(ctx, cam, this);
     // 대시 잔상
-    const D = PLAYER.dash;
+    const D = this.stats.dash;
     for (const g of this.ghosts) {
       ctx.fillStyle = `rgba(120,220,255,${0.45 * (1 - g.t / D.ghostLifetime)})`;
       ctx.fillRect(g.x - cam.x, g.y - cam.y, this.w, this.h);
     }
 
     // 무적 시간 동안 깜빡임
-    if (this.invincibleTimer > 0 && Math.floor(this.invincibleTimer / PLAYER.hurt.blinkInterval) % 2 === 0) return;
+    if (this.invincibleTimer > 0 && Math.floor(this.invincibleTimer / this.stats.hurt.blinkInterval) % 2 === 0) return;
 
     // squash > 0: 납작, < 0: 길쭉
     const sx = 1 + this.squash;
@@ -306,7 +347,7 @@ export class Player {
   drawSword(ctx, cx, cy) {
     const t = this.attackElapsed;
     if (t < 0) return;
-    const A = PLAYER.attack;
+    const A = this.stats.attack;
     const S = this.step;
     const L = S.swordLength;
     const from = S.fromAngle, to = S.toAngle; // 각도(도). 0 = 정면, 음수 = 위쪽

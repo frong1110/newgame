@@ -1,0 +1,66 @@
+{
+  "choiceCount": 3,
+  "roomClearDelay": 0.7,
+  "trees": {
+    "dash": {
+      "name": "대시",
+      "skills": [
+        {
+          "id": "dash_diagonal",
+          "name": "대각선 대시",
+          "description": "↑↓ 와 함께 쓰면 위·아래·대각선으로 대시",
+          "requires": [],
+          "pos": [
+            0,
+            0
+          ],
+          "effects": [
+            {
+              "stat": "dash.directions",
+              "op": "set",
+              "value": 8
+            }
+          ]
+        },
+        {
+          "id": "dash_chain",
+          "name": "사슬",
+          "description": "대시 대신 사슬을 던져 그 위치로 날아감. 적에게 닿으면 붙으며 피해",
+          "requires": [
+            "dash_diagonal"
+          ],
+          "pos": [
+            0,
+            1
+          ],
+          "effects": [
+            {
+              "stat": "dash.mode",
+              "op": "set",
+              "value": "chain"
+            }
+          ]
+        },
+        {
+          "id": "dash_pull",
+          "name": "끌어오기",
+          "description": "사슬에 걸린 적을 내 쪽으로 끌어오며 피해",
+          "requires": [
+            "dash_chain"
+          ],
+          "pos": [
+            0,
+            2
+          ],
+          "effects": [
+            {
+              "stat": "chain.onEnemy",
+              "op": "set",
+              "value": "pull"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
