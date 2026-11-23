@@ -1,12 +1,17 @@
+import { GAME, LEVELS, PLAYER } from './data/index.js';
+import { Input } from './input.js';
+import { World } from './world.js';
+import { Player } from './player.js';
+
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 
-const world = new World(LEVEL);
+const world = new World(LEVELS.level1);
 const player = new Player(world.spawn.x, world.spawn.y);
 const cam = { x: 0, y: 0, w: canvas.width, h: canvas.height };
 const puffs = []; // 2단 점프 이펙트
 
-const STEP = 1 / 120; // 고정 시간 간격 물리 (프레임레이트와 무관하게 같은 조작감)
+const STEP = GAME.fixedStep; // 고정 시간 간격 물리 (프레임레이트와 무관하게 같은 조작감)
 let acc = 0;
 let last = performance.now();
 
@@ -23,13 +28,13 @@ function update(dt) {
   while (puffs.length && puffs[0].t > 0.3) puffs.shift();
 
   // 구멍으로 떨어지면 리스폰
-  if (player.y > world.pixelHeight + 200) player.respawn(world.spawn.x, world.spawn.y);
+  if (player.y > world.pixelHeight + GAME.fallRespawnMargin) player.respawn(world.spawn.x, world.spawn.y);
 
   // 카메라: 플레이어를 부드럽게 따라감
   const targetX = player.x + player.w / 2 - cam.w / 2;
   const targetY = player.y + player.h / 2 - cam.h / 2;
-  cam.x += (targetX - cam.x) * Math.min(1, 8 * dt);
-  cam.y += (targetY - cam.y) * Math.min(1, 8 * dt);
+  cam.x += (targetX - cam.x) * Math.min(1, GAME.cameraFollow * dt);
+  cam.y += (targetY - cam.y) * Math.min(1, GAME.cameraFollow * dt);
   cam.x = clamp(cam.x, 0, Math.max(0, world.pixelWidth - cam.w));
   cam.y = clamp(cam.y, 0, Math.max(0, world.pixelHeight - cam.h));
 
@@ -42,7 +47,7 @@ function render() {
   world.draw(ctx, view);
 
   for (const p of puffs) {
-    const k = p.t / 0.3;
+    const k = p.t / GAME.puffDuration;
     ctx.strokeStyle = `rgba(255,255,255,${1 - k})`;
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -55,12 +60,12 @@ function render() {
   // 디버그 HUD
   ctx.fillStyle = 'rgba(255,255,255,0.8)';
   ctx.font = '14px monospace';
-  ctx.fillText(`jumps: ${CONFIG.MAX_JUMPS - player.jumpsUsed}/${CONFIG.MAX_JUMPS}`, 12, 22);
+  ctx.fillText(`jumps: ${PLAYER.maxJumps - player.jumpsUsed}/${PLAYER.maxJumps}`, 12, 22);
   ctx.fillText(`ground: ${player.onGround}`, 12, 40);
 }
 
 function frame(now) {
-  acc += Math.min(0.25, (now - last) / 1000);
+  acc += Math.min(GAME.maxFrameTime, (now - last) / 1000);
   last = now;
   while (acc >= STEP) {
     update(STEP);

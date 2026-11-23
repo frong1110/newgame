@@ -1,13 +1,16 @@
-class Player {
+import { PLAYER, GAME } from './data/index.js';
+import { Input } from './input.js';
+
+export class Player {
   constructor(x, y) {
-    this.w = 24;
-    this.h = 30;
+    this.w = PLAYER.width;
+    this.h = PLAYER.height;
     this.respawn(x, y);
   }
 
   respawn(x, y) {
-    this.x = x + (CONFIG.TILE - this.w) / 2;
-    this.y = y + (CONFIG.TILE - this.h);
+    this.x = x + (GAME.tileSize - this.w) / 2;
+    this.y = y + (GAME.tileSize - this.h);
     this.vx = 0;
     this.vy = 0;
     this.onGround = false;
@@ -19,22 +22,22 @@ class Player {
   }
 
   update(dt, world) {
-    const C = CONFIG;
+    const C = PLAYER;
 
     // --- 좌우 이동 ---
     const dir = (Input.isDown('ArrowRight') ? 1 : 0) - (Input.isDown('ArrowLeft') ? 1 : 0);
     if (dir !== 0) this.facing = dir;
-    const accel = this.onGround ? C.GROUND_ACCEL : C.AIR_ACCEL;
-    const decel = this.onGround ? C.GROUND_DECEL : C.AIR_DECEL;
+    const accel = this.onGround ? C.groundAccel : C.airAccel;
+    const decel = this.onGround ? C.groundDecel : C.airDecel;
     if (dir !== 0) {
-      this.vx = approach(this.vx, dir * C.MOVE_SPEED, accel * dt);
+      this.vx = approach(this.vx, dir * C.moveSpeed, accel * dt);
     } else {
       this.vx = approach(this.vx, 0, decel * dt);
     }
 
     // --- 점프 (코요테 타임 + 점프 버퍼 + 2단 점프) ---
     if (this.onGround) {
-      this.coyoteTimer = C.COYOTE_TIME;
+      this.coyoteTimer = C.coyoteTime;
       this.jumpsUsed = 0;
     } else {
       this.coyoteTimer -= dt;
@@ -42,33 +45,33 @@ class Player {
       if (this.coyoteTimer <= 0 && this.jumpsUsed === 0) this.jumpsUsed = 1;
     }
 
-    if (Input.wasPressed('Space')) this.jumpBufferTimer = C.JUMP_BUFFER;
+    if (Input.wasPressed('Space')) this.jumpBufferTimer = C.jumpBuffer;
     else this.jumpBufferTimer -= dt;
 
     if (this.jumpBufferTimer > 0) {
       const canGroundJump = this.coyoteTimer > 0 && this.jumpsUsed === 0;
-      const canAirJump = !canGroundJump && this.jumpsUsed < C.MAX_JUMPS;
+      const canAirJump = !canGroundJump && this.jumpsUsed < C.maxJumps;
       if (canGroundJump) {
-        this.vy = -C.JUMP_SPEED;
+        this.vy = -C.jumpSpeed;
         this.jumpsUsed = 1;
         this.jumpBufferTimer = 0;
         this.coyoteTimer = 0;
-        this.squash = -0.3;
+        this.squash = -C.jumpStretch;
       } else if (canAirJump && Input.wasPressed('Space')) {
         // 공중 점프는 "이번 프레임에 누른 경우"에만 (버퍼로 자동 소모되지 않게)
-        this.vy = -C.DOUBLE_JUMP_SPEED;
+        this.vy = -C.doubleJumpSpeed;
         this.jumpsUsed++;
         this.jumpBufferTimer = 0;
-        this.squash = -0.3;
+        this.squash = -C.jumpStretch;
         this.spawnPuff = true;
       }
     }
 
     // 스페이스를 일찍 떼면 낮게 점프
-    if (Input.wasReleased('Space') && this.vy < 0) this.vy *= C.JUMP_CUT;
+    if (Input.wasReleased('Space') && this.vy < 0) this.vy *= C.jumpCut;
 
     // --- 중력 ---
-    this.vy = Math.min(this.vy + C.GRAVITY * dt, C.MAX_FALL_SPEED);
+    this.vy = Math.min(this.vy + C.gravity * dt, C.maxFallSpeed);
 
     // --- 충돌 처리 (축별로 분리) ---
     this.x += this.vx * dt;
@@ -78,13 +81,13 @@ class Player {
     this.y += this.vy * dt;
     this.onGround = false;
     this.resolveY(world);
-    if (this.onGround && !wasOnGround) this.squash = 0.25;
+    if (this.onGround && !wasOnGround) this.squash = PLAYER.landSquash;
 
-    this.squash = approach(this.squash, 0, 2.5 * dt);
+    this.squash = approach(this.squash, 0, PLAYER.squashRecovery * dt);
   }
 
   resolveX(world) {
-    const T = CONFIG.TILE;
+    const T = GAME.tileSize;
     const top = Math.floor(this.y / T);
     const bottom = Math.floor((this.y + this.h - 0.01) / T);
     if (this.vx > 0) {
@@ -101,7 +104,7 @@ class Player {
   }
 
   resolveY(world) {
-    const T = CONFIG.TILE;
+    const T = GAME.tileSize;
     const left = Math.floor(this.x / T);
     const right = Math.floor((this.x + this.w - 0.01) / T);
     if (this.vy > 0) {
@@ -138,7 +141,7 @@ class Player {
   }
 }
 
-function approach(value, target, delta) {
+export function approach(value, target, delta) {
   if (value < target) return Math.min(value + delta, target);
   return Math.max(value - delta, target);
 }
