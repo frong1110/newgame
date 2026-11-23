@@ -1,13 +1,11 @@
 {
   "width": 24,
   "height": 30,
-
   "moveSpeed": 260,
   "groundAccel": 2400,
   "groundDecel": 2800,
   "airAccel": 1600,
   "airDecel": 900,
-
   "gravity": 2200,
   "maxFallSpeed": 900,
   "jumpSpeed": 720,
@@ -16,8 +14,80 @@
   "jumpCut": 0.45,
   "coyoteTime": 0.1,
   "jumpBuffer": 0.12,
-
   "jumpStretch": 0.3,
   "landSquash": 0.25,
-  "squashRecovery": 2.5
+  "squashRecovery": 2.5,
+  "attack": {
+    "inputBuffer": 0.18,
+    "comboWindow": 0.3,
+    "moveSpeedMultiplier": 0.4,
+    "airLungeMultiplier": 0.5,
+    "pivotForward": 4,
+    "trailInner": 0.45,
+    "arcScaleX": 1.45,
+    "arcScaleY": 0.55,
+    "combo": [
+      {
+        "name": "내려베기",
+        "startup": 0.06,
+        "active": 0.09,
+        "recovery": 0.16,
+        "fromAngle": -70,
+        "toAngle": 50,
+        "swordLength": 52,
+        "rangeWidth": 66,
+        "rangeHeight": 44,
+        "rangeOffsetY": -2,
+        "lungeSpeed": 200,
+        "lungeTime": 0.08,
+        "damage": 1,
+        "knockbackX": 260,
+        "knockbackY": 200,
+        "hitstop": 0.06
+      },
+      {
+        "name": "올려베기",
+        "startup": 0.05,
+        "active": 0.09,
+        "recovery": 0.16,
+        "fromAngle": 55,
+        "toAngle": -60,
+        "swordLength": 52,
+        "rangeWidth": 66,
+        "rangeHeight": 44,
+        "rangeOffsetY": -2,
+        "lungeSpeed": 220,
+        "lungeTime": 0.08,
+        "damage": 1,
+        "knockbackX": 240,
+        "knockbackY": 340,
+        "hitstop": 0.06
+      },
+      {
+        "name": "마무리 베기",
+        "startup": 0.1,
+        "active": 0.12,
+        "recovery": 0.28,
+        "fromAngle": -95,
+        "toAngle": 65,
+        "swordLength": 62,
+        "rangeWidth": 82,
+        "rangeHeight": 56,
+        "rangeOffsetY": -4,
+        "lungeSpeed": 330,
+        "lungeTime": 0.1,
+        "damage": 2,
+        "knockbackX": 480,
+        "knockbackY": 300,
+        "hitstop": 0.11
+      }
+    ]
+  },
+  "hurt": {
+    "knockbackX": 340,
+    "knockbackY": 420,
+    "stunTime": 0.25,
+    "invincibleTime": 0.9,
+    "blinkInterval": 0.08
+  }
 }

@@ -1,0 +1,14 @@
+{
+  "dummy": {
+    "width": 28,
+    "height": 28,
+    "maxHp": 3,
+    "moveSpeed": 60,
+    "gravity": 2200,
+    "maxFallSpeed": 900,
+    "knockbackDecel": 1400,
+    "stunTime": 0.35,
+    "hitFlashTime": 0.1,
+    "respawnTime": 2.0
+  }
+}
