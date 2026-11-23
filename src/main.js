@@ -57,14 +57,13 @@ function update(dt) {
 }
 
 function resolveCombat() {
-  const A = PLAYER.attack;
   const hitbox = player.getAttackHitbox();
   for (const e of enemies) {
     if (!e.alive) continue;
     // 플레이어 공격 → 적
     if (hitbox && overlaps(hitbox, e)) {
-      if (e.takeHit(A.damage, player.facing, A.knockbackX, A.knockbackY, player.attackId)) {
-        hitstopTimer = A.hitstop;
+      if (e.takeHit(hitbox.damage, player.facing, hitbox.knockbackX, hitbox.knockbackY, player.attackId)) {
+        hitstopTimer = hitbox.hitstop;
       }
     }
     // 적 몸통 → 플레이어 (경직 중인 적은 공격 판정 없음)
@@ -97,6 +96,8 @@ function render() {
   ctx.font = '14px monospace';
   ctx.fillText(`jumps: ${PLAYER.maxJumps - player.jumpsUsed}/${PLAYER.maxJumps}`, 12, 22);
   ctx.fillText(`ground: ${player.onGround}`, 12, 40);
+  const comboLabel = player.attackTimer > 0 ? `${player.comboStep + 1}/${PLAYER.attack.combo.length} ${player.step.name}` : '-';
+  ctx.fillText(`combo: ${comboLabel}`, 12, 58);
 }
 
 function frame(now) {
