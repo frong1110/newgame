@@ -126,9 +126,9 @@ export class Player {
     }
   }
 
-  // 대시 또는 사슬로 날아가는 중 (잔상 표시, 조작 불가)
+  // 대시 중이거나 사슬로 멈칫·날아가는 중 (조작 불가)
   get isDashing() {
-    return this.dashTimer > 0 || this.chain.zipping;
+    return this.dashTimer > 0 || this.chain.locksPlayer;
   }
 
   get isInvincible() {
@@ -197,7 +197,7 @@ export class Player {
     const D = this.stats.dash;
     for (const g of this.ghosts) g.t += dt;
     while (this.ghosts.length && this.ghosts[0].t > D.ghostLifetime) this.ghosts.shift();
-    if (this.isDashing) {
+    if (this.dashTimer > 0 || this.chain.zipping) {
       this.ghostTimer -= dt;
       if (this.ghostTimer <= 0) {
         this.ghosts.push({ x: this.x, y: this.y, facing: this.facing, t: 0 });
