@@ -89,5 +89,15 @@
     "stunTime": 0.25,
     "invincibleTime": 0.9,
     "blinkInterval": 0.08
+  },
+  "dash": {
+    "speed": 720,
+    "duration": 0.16,
+    "cooldown": 0.45,
+    "endSpeed": 260,
+    "maxAirDashes": 1,
+    "invincibleExtra": 0.05,
+    "ghostInterval": 0.025,
+    "ghostLifetime": 0.18
   }
 }
