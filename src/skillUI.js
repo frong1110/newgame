@@ -14,6 +14,22 @@ function text(ctx, str, x, y, { size = 16, color = '#fff', align = 'left', bold 
   ctx.textAlign = 'left';
 }
 
+// 폭에 맞게 줄바꿈해서 여러 줄로 그린다 (가운데 정렬)
+function wrapText(ctx, str, cx, y, maxWidth, lineHeight, opts) {
+  ctx.font = `${opts.bold ? 'bold ' : ''}${opts.size}px sans-serif`;
+  const lines = [];
+  let line = '';
+  for (const word of str.split(' ')) {
+    const test = line ? `${line} ${word}` : word;
+    if (ctx.measureText(test).width > maxWidth && line) {
+      lines.push(line);
+      line = word;
+    } else line = test;
+  }
+  if (line) lines.push(line);
+  lines.forEach((l, i) => text(ctx, l, cx, y + i * lineHeight, { ...opts, align: 'center' }));
+}
+
 export function drawChoicePanel(ctx, choices, selected, skillTree, room) {
   dim(ctx);
   text(ctx, `방 ${room} 클리어!`, W / 2, 110, { size: 30, bold: true, align: 'center' });
@@ -33,10 +49,10 @@ export function drawChoicePanel(ctx, choices, selected, skillTree, room) {
     text(ctx, `${i + 1}`, x + 14, y + 28, { size: 16, color: '#8fa3bb', bold: true });
     text(ctx, skillTree.trees[s.tree].name, x + cw - 14, y + 28, { size: 13, color: '#78d6ff', align: 'right' });
     text(ctx, s.name, x + cw / 2, y + 82, { size: 22, bold: true, align: 'center', color: sel ? '#ffcc4d' : '#fff' });
-    text(ctx, s.description, x + cw / 2, y + 118, { size: 14, color: '#cfd8e3', align: 'center' });
+    wrapText(ctx, s.description, x + cw / 2, y + 112, cw - 28, 19, { size: 14, color: '#cfd8e3' });
     if (s.requires.length) {
       const req = s.requires.map((r) => skillTree.byId[r].name).join(', ');
-      text(ctx, `← ${req}`, x + cw / 2, y + 160, { size: 12, color: '#8fa3bb', align: 'center' });
+      text(ctx, `← ${req}`, x + cw / 2, y + 174, { size: 12, color: '#8fa3bb', align: 'center' });
     }
   });
   text(ctx, '1·2·3 또는 ←→ 로 고르고 Enter / Space / X 로 확정', W / 2, 430, { size: 14, color: '#8fa3bb', align: 'center' });
@@ -47,7 +63,7 @@ export function drawTreePanel(ctx, skillTree) {
   text(ctx, '스킬 트리', W / 2, 60, { size: 28, bold: true, align: 'center' });
   text(ctx, '방을 클리어하면 배울 수 있는 스킬 중에서 후보가 나옵니다 · 죽으면(R) 초기화', W / 2, 88, { size: 13, color: '#8fa3bb', align: 'center' });
 
-  const nw = 170, nh = 64, colGap = 50, rowGap = 70;
+  const nw = 260, nh = 74, colGap = 50, rowGap = 36;
   let top = 130;
   for (const [, tree] of Object.entries(skillTree.trees)) {
     text(ctx, `${tree.name} 트리`, 60, top, { size: 18, bold: true, color: '#78d6ff' });
@@ -80,7 +96,7 @@ export function drawTreePanel(ctx, skillTree) {
       ctx.strokeRect(x + 0.5, y + 0.5, nw - 1, nh - 1);
       const color = owned ? '#ffcc4d' : open ? '#fff' : '#6b7a8c';
       text(ctx, s.name, x + nw / 2, y + 26, { size: 16, bold: true, color, align: 'center' });
-      text(ctx, s.description, x + nw / 2, y + 48, { size: 12, color: owned || open ? '#cfd8e3' : '#56657a', align: 'center' });
+      wrapText(ctx, s.description, x + nw / 2, y + 46, nw - 20, 16, { size: 12, color: owned || open ? '#cfd8e3' : '#56657a' });
     }
     const rows = Math.max(...tree.skills.map((s) => s.pos[1])) + 1;
     top += 24 + rows * (nh + rowGap) + 20;

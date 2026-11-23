@@ -102,9 +102,34 @@
     "invincibleExtra": 0.05,
     "ghostInterval": 0.025,
     "ghostLifetime": 0.18,
-    "strikeDamage": 0,
-    "strikeKnockbackX": 300,
-    "strikeKnockbackY": 220,
-    "strikeHitstop": 0.04
+    "directions": 2,
+    "mode": "dash",
+    "endSpeedY": 300
+  },
+  "chain": {
+    "onEnemy": "zip",
+    "speed": 1500,
+    "range": 300,
+    "hookSize": 12,
+    "retractSpeed": 2200,
+    "cooldown": 0.5,
+    "zipSpeed": 950,
+    "zipMaxTime": 0.6,
+    "arriveDistance": 14,
+    "endSpeed": 240,
+    "invincibleExtra": 0.08,
+    "attachDistance": 6,
+    "attachBounce": 380,
+    "damage": 1,
+    "knockbackX": 120,
+    "knockbackY": 160,
+    "hitstop": 0.08,
+    "pullSpeed": 900,
+    "pullMaxTime": 0.6,
+    "pullStopGap": 6,
+    "pullDamage": 1,
+    "pullStun": 0.6,
+    "pullKnockbackX": 60,
+    "pullKnockbackY": 120
   }
 }

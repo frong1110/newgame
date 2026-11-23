@@ -91,7 +91,7 @@ function update(dt) {
 
   if (Input.wasPressed('KeyR')) resetRun();
 
-  player.update(dt, world);
+  player.update(dt, world, enemies);
   for (const e of enemies) e.update(dt, world);
   resolveCombat();
   updateRoomClear(dt);
@@ -119,15 +119,11 @@ function update(dt) {
 
 function resolveCombat() {
   const hitbox = player.getAttackHitbox();
-  const dashHit = player.getDashHitbox();
+  // 사슬로 적을 맞힌 경우
+  const chainHitstop = player.chain.takeHitstop();
+  if (chainHitstop > 0) hitstopTimer = chainHitstop;
   for (const e of enemies) {
     if (!e.alive) continue;
-    // 돌진 베기 (스킬) → 적
-    if (dashHit && overlaps(dashHit, e)) {
-      if (e.takeHit(dashHit.damage, player.dashDir, dashHit.knockbackX, dashHit.knockbackY, dashHit.hitId)) {
-        hitstopTimer = dashHit.hitstop;
-      }
-    }
     // 플레이어 공격 → 적
     if (hitbox && overlaps(hitbox, e)) {
       if (e.takeHit(hitbox.damage, player.facing, hitbox.knockbackX, hitbox.knockbackY, player.attackId)) {
@@ -166,14 +162,14 @@ function render() {
   ctx.fillText(`ground: ${player.onGround}`, 12, 40);
   const comboLabel = player.attackTimer > 0 ? `${player.comboStep + 1}/${player.stats.attack.combo.length} ${player.step.name}` : '-';
   ctx.fillText(`combo: ${comboLabel}`, 12, 58);
-  const dashReady = player.dashCooldownTimer <= 0 && (player.onGround || player.airDashesUsed < player.stats.dash.maxAirDashes);
+  const dashReady = player.dashCooldownTimer <= 0 && (player.usesChain || player.onGround || player.airDashesUsed < player.stats.dash.maxAirDashes);
   ctx.fillText(`room: ${room}   enemies: ${enemies.filter((e) => e.alive).length}/${enemies.length}`, 12, 94);
   const owned = [...skillTree.owned].map((id) => skillTree.byId[id].name);
   ctx.textAlign = 'right';
   ctx.fillText('K: 스킬 트리', canvas.width - 12, 22);
   owned.forEach((name, i) => ctx.fillText(`· ${name}`, canvas.width - 12, 44 + i * 18));
   ctx.textAlign = 'left';
-  ctx.fillText(`dash: ${player.isDashing ? 'DASH' : dashReady ? 'ready' : '...'}${player.dodgeTimer > 0 ? ' (무적)' : ''}`, 12, 76);
+  ctx.fillText(`${player.usesChain ? 'chain' : 'dash'}: ${player.isDashing ? 'GO' : player.chain.active ? player.chain.phase : dashReady ? 'ready' : '...'}${player.dodgeTimer > 0 ? ' (무적)' : ''}`, 12, 76);
 }
 
 function renderOverlay() {
