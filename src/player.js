@@ -219,7 +219,14 @@ export class Player {
     // --- 대시 / 사슬 ---
     const inputDir = stunned ? 0 : (Input.isDown('ArrowRight') ? 1 : 0) - (Input.isDown('ArrowLeft') ? 1 : 0);
     const inputY = stunned ? 0 : (Input.isDown('ArrowDown') ? 1 : 0) - (Input.isDown('ArrowUp') ? 1 : 0);
-    if (DASH_KEYS.some((k) => Input.wasPressed(k)) && this.canDash(stunned)) this.useDash(inputDir, inputY);
+    if (DASH_KEYS.some((k) => Input.wasPressed(k)) && !stunned) {
+      if (this.chain.hooked) {
+        // 사슬을 걸어 둔 상태에서 다시 누르면 발동 (공격 캔슬)
+        this.attackTimer = 0;
+        this.comboTimer = 0;
+        this.chain.trigger(this);
+      } else if (this.canDash(stunned)) this.useDash(inputDir, inputY);
+    }
     if (this.chain.active) this.chain.update(dt, this, world, enemies);
     if (this.isDashing) {
       if (this.dashTimer > 0) this.updateDash(dt, world);

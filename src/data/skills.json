@@ -26,7 +26,7 @@
         {
           "id": "dash_chain",
           "name": "사슬",
-          "description": "대시 대신 사슬을 던져 그 위치로 날아감. 적에게 닿으면 붙으며 피해",
+          "description": "대시 대신 사슬을 걸어 두고, 다시 누르면 그곳으로 날아감 (적이면 붙으며 피해)",
           "requires": [
             "dash_diagonal"
           ],
@@ -45,7 +45,7 @@
         {
           "id": "dash_pull",
           "name": "끌어오기",
-          "description": "사슬에 걸린 적을 내 쪽으로 끌어오며 피해",
+          "description": "2번째 시전 때 적에게 날아가는 대신 적을 끌어오며 피해",
           "requires": [
             "dash_chain"
           ],

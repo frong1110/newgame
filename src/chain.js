@@ -1,5 +1,7 @@
-// 사슬 (대시 트리 2·3번째 스킬). 대시 키로 사슬을 던진다.
-//   던지기(throw) → 걸리면 잠깐 멈칫(latch: 사슬이 팽팽해지며 떨림, 플레이어 정지) → 아래 동작
+// 사슬 (대시 트리 2·3번째 스킬). 대시 키를 두 번 쓴다.
+//   1번째: 던지기(throw) → 지형/적에 걸리면 걸어 둔 상태(hooked). 플레이어는 자유롭게 움직임
+//          (시간이 지나거나, 너무 멀어지거나, 적이 죽으면 풀림)
+//   2번째: 발동 → 잠깐 멈칫(latch: 사슬이 팽팽해지며 떨림, 플레이어 정지) → 아래 동작
 //                 → 지형에 박히면: 그 위치로 빠르게 날아감(zip)
 //                 → 적에게 닿으면: onEnemy 가 'zip' 이면 적에게 날아가 붙으며 피해,
 //                                   'pull' 이면 적을 내 쪽으로 끌어오며 피해
@@ -12,13 +14,17 @@ const SUBSTEP = 4; // 사슬 끝이 한 번에 움직이는 최대 거리(px). �
 
 export class Chain {
   constructor() {
-    this.phase = null; // null | 'throw' | 'latch' | 'zip' | 'pull' | 'retract'
+    this.phase = null; // null | 'throw' | 'hooked' | 'latch' | 'zip' | 'pull' | 'retract'
     this.count = 0;
     this.hitstop = 0;
   }
 
   get active() {
     return this.phase !== null;
+  }
+
+  get hooked() {
+    return this.phase === 'hooked';
   }
 
   get zipping() {
@@ -61,6 +67,7 @@ export class Chain {
     const C = p.stats.chain;
     if (this.phase === 'throw') this.updateThrow(dt, p, world, enemies, C);
     else if (this.phase === 'retract') this.updateRetract(dt, p, C);
+    else if (this.phase === 'hooked') this.updateHooked(dt, p, C);
     else if (this.phase === 'latch') this.updateLatch(dt, p, C);
     else if (this.phase === 'zip') this.updateZip(dt, p, world, C);
     else if (this.phase === 'pull') this.updatePull(dt, p, C);
@@ -83,20 +90,54 @@ export class Chain {
       const enemy = enemies.find((e) => e.alive && overlaps(hook, e));
       if (enemy) {
         this.target = enemy;
-        const pulling = C.onEnemy === 'pull';
-        // 멈칫하는 동안 적도 그 자리에 붙잡아 둔다 (속도 0 으로 끌기)
-        const [ex, ey] = center(enemy);
-        enemy.pull = { x: ex, y: ey, speed: 0 };
         enemy.flashTimer = enemy.stats.hitFlashTime;
-        return this.latch(pulling ? 'pull' : 'zip', pulling ? C.pullLatchTime : C.latchTime);
+        return this.hook(C);
       }
       const T = GAME.tileSize;
       if (world.isSolid(Math.floor(this.hx / T), Math.floor(this.hy / T))) {
         // 박힌 지점에서 살짝 물러난 곳을 목표로 (몸이 지형에 끼지 않게)
         this.anchor = { x: this.hx - this.dx * (p.w / 2 + 2), y: this.hy - this.dy * (p.h / 2 + 2) };
-        return this.latch('zip', C.latchTime);
+        return this.hook(C);
       }
     }
+  }
+
+  hook(C) {
+    this.phase = 'hooked';
+    this.timer = C.hookHoldTime;
+  }
+
+  // 걸어 둔 상태: 사슬 끝이 대상을 따라다니고, 두 번째 시전(trigger)을 기다린다
+  updateHooked(dt, p, C) {
+    if (this.target) {
+      if (!this.target.alive) return this.release();
+      [this.hx, this.hy] = center(this.target);
+    }
+    const [cx, cy] = center(p);
+    const tooFar = Math.hypot(this.hx - cx, this.hy - cy) > C.range * C.hookBreakMultiplier;
+    this.timer -= dt;
+    if (this.timer <= 0 || tooFar) this.release();
+  }
+
+  // 두 번째 시전: 멈칫 후 날아가기 / 끌어오기
+  trigger(p) {
+    if (!this.hooked) return false;
+    const C = p.stats.chain;
+    const pulling = this.target && C.onEnemy === 'pull';
+    if (this.target) {
+      // 멈칫하는 동안 적을 그 자리에 붙잡아 둔다 (속도 0 으로 끌기)
+      const [ex, ey] = center(this.target);
+      this.target.pull = { x: ex, y: ey, speed: 0 };
+    }
+    this.latch(pulling ? 'pull' : 'zip', pulling ? C.pullLatchTime : C.latchTime);
+    return true;
+  }
+
+  // 사슬을 풀고 되감기
+  release() {
+    if (this.target) this.target.pull = null;
+    this.target = null;
+    this.phase = 'retract';
   }
 
   latch(next, time) {
@@ -228,8 +269,19 @@ export class Chain {
       ctx.fillRect(x0 + (x1 - x0) * k - 2, y0 + (y1 - y0) * k - 2, 4, 4);
     }
     // 갈고리 머리
-    ctx.fillStyle = latching ? '#ffcc4d' : '#e8eef5';
+    const hooked = latching || this.phase === 'hooked';
+    ctx.fillStyle = hooked ? '#ffcc4d' : '#e8eef5';
     const hs = latching ? 5 : 4;
+    if (this.phase === 'hooked' && this.target) {
+      // 걸어 둔 적 표시 (남은 시간만큼 줄어드는 테두리)
+      const t = this.target;
+      const k = Math.max(0, this.timer / p.stats.chain.hookHoldTime);
+      ctx.strokeStyle = 'rgba(255,204,77,0.9)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(t.x + t.w / 2 - cam.x, t.y + t.h / 2 - cam.y, Math.max(t.w, t.h) * 0.8, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * k);
+      ctx.stroke();
+    }
     ctx.fillRect(x1 - hs, y1 - hs, hs * 2, hs * 2);
   }
 }

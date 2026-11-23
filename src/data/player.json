@@ -113,6 +113,8 @@
     "hookSize": 12,
     "retractSpeed": 2200,
     "cooldown": 0.5,
+    "hookHoldTime": 3.0,
+    "hookBreakMultiplier": 1.6,
     "latchTime": 0.14,
     "pullLatchTime": 0.2,
     "latchShake": 2,
