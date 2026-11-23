@@ -1,0 +1,8 @@
+{
+  "tileSize": 32,
+  "fixedStep": 0.008333333333333333,
+  "maxFrameTime": 0.25,
+  "cameraFollow": 8,
+  "fallRespawnMargin": 200,
+  "puffDuration": 0.3
+}

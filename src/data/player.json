@@ -1,0 +1,23 @@
+{
+  "width": 24,
+  "height": 30,
+
+  "moveSpeed": 260,
+  "groundAccel": 2400,
+  "groundDecel": 2800,
+  "airAccel": 1600,
+  "airDecel": 900,
+
+  "gravity": 2200,
+  "maxFallSpeed": 900,
+  "jumpSpeed": 720,
+  "doubleJumpSpeed": 640,
+  "maxJumps": 2,
+  "jumpCut": 0.45,
+  "coyoteTime": 0.1,
+  "jumpBuffer": 0.12,
+
+  "jumpStretch": 0.3,
+  "landSquash": 0.25,
+  "squashRecovery": 2.5
+}
