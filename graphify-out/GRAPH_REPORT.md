@@ -1,17 +1,17 @@
 # Graph Report - newgame  (2026-11-24)
 
 ## Corpus Check
-- 31 files · ~19,841 words
+- 31 files · ~20,173 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 1 file(s) not represented in the graph (top: (none) 1)
 
 ## Summary
-- 321 nodes · 592 edges · 15 communities (8 shown, 7 thin omitted)
+- 321 nodes · 593 edges · 15 communities (8 shown, 7 thin omitted)
 - Extraction: 92% EXTRACTED · 8% INFERRED · 0% AMBIGUOUS · INFERRED: 48 edges (avg confidence: 0.89)
 - Token cost: 101,667 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `049ed60a`
+- Built from commit: `ac68c30f`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -99,7 +99,7 @@ Cohesion: 0.39
 Nodes (6): ensure(), playSfx(), SOUNDS, resolveCombat(), resolveSlam(), overlaps()
 
 ## Knowledge Gaps
-- **7 isolated node(s):** `Chain Extend (removed weight tier-1 skill)`, `Airborne state (enemy.flight)`, `Design docs: 1-person dev roadmap, Weapon/Augment design (Claude Docs)`, `level1 layout: P start at (2,11), 4 enemies E, ground with 3 pits, floating platforms`, `Not yet: player HP/death, distinct rooms, 2nd enemy, Whip Storm, tuning panel` (+2 more)
+- **7 isolated node(s):** `Chain Extend (removed weight tier-1 skill)`, `Airborne state (enemy.flight)`, `Not yet: player HP/death, distinct rooms, 2nd enemy, Whip Storm, tuning panel`, `window.__game dev-only debug handle`, `v0.1.0 - Prototype 1 (feel) baseline` (+2 more)
   These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 105 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **7 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
@@ -108,7 +108,7 @@ _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `Chain` connect `던지는 사슬 (Chain)` to `데이터 진입점·사슬 이동 규칙`?**
   _High betweenness centrality (0.121) - this node is a cross-community bridge._
-- **What connects `Chain Extend (removed weight tier-1 skill)`, `Airborne state (enemy.flight)`, `Design docs: 1-person dev roadmap, Weapon/Augment design (Claude Docs)` to the rest of the system?**
+- **What connects `Chain Extend (removed weight tier-1 skill)`, `Airborne state (enemy.flight)`, `Not yet: player HP/death, distinct rooms, 2nd enemy, Whip Storm, tuning panel` to the rest of the system?**
   _7 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `게임 루프·화면 그리기 (main.js)` be split into smaller, more focused modules?**
   _Cohesion score 0.08687943262411348 - nodes in this community are weakly interconnected._

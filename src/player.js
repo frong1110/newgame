@@ -87,6 +87,8 @@ export class Player {
     }
     // --- 특수 버튼: 사슬 당기기 (사슬 무기일 때). ↑↓ 로 위아래·대각선 조준 ---
     this.holdingUp = !stunned && Input.isDown('ArrowUp'); // 회전 투척: 당기는 동안 ↑ 면 띄우기
+    // 철퇴 폭풍 회전 중 C 를 다시 누르면 적을 던진다 (회전 중에는 아래 특수 버튼 시작 처리가 막혀 있다)
+    if (Input.wasPressed(SPECIAL_KEY) && this.pullChain.phase === 'spin') this.pullChain.releaseRequested = true;
     if (Input.wasPressed(SPECIAL_KEY) && this.canUseSpecialChain(stunned)) {
       // 내리찍기: 공중 상태 적이 사거리 안에 있으면 그 적을 노린다 (대기시간 무시 → 띄운 직후 바로 이어짐)
       const airTarget = this.stats.pullChain.slamAirborne ? this.findAirborneTarget(enemies) : null;
