@@ -99,6 +99,7 @@
     "tipFraction": 0.25,
     "minTipExtension": 0.7,
     "tipDamageMultiplier": 1.0,
+    "tipBonusMultiplier": 1,
     "tipBindTime": 0,
     "bindTetherRange": 260,
     "linkShare": 0,
