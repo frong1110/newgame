@@ -28,6 +28,7 @@ export class Enemy {
     this.pull = null; // 사슬에 끌려오는 중이면 { x, y, speed } (목표 지점)
     this.bindTimer = 0; // 사슬에 묶여(속박) 움직이지 못하는 남은 시간 (감기 스킬)
     this.thrown = null; // 회전 투척으로 날아가는 중이면 { damage, knockbackX, knockbackY, hitstop, hitId }
+    this.push = null; // 정해진 x 까지 미끄러지듯 밀려나는 중이면 { x, speed, stun } (내리꽂기)
   }
 
   update(dt, world) {
@@ -52,6 +53,22 @@ export class Enemy {
       this.vy = (dy / d) * (step / dt);
       this.stunTimer = Math.max(this.stunTimer, dt * 2); // 끌려오는 동안은 몸통 피해 없음
       moveAndCollide(this, world, dt);
+      return;
+    }
+    if (this.push) {
+      // 밀려나기: 목표 x 까지 일정 속도로 미끄러진 뒤 경직 (벽에 막히면 그 자리에서 멈춤)
+      const dx = this.push.x - this.x;
+      const step = Math.min(this.push.speed * dt, Math.abs(dx));
+      this.vx = Math.sign(dx) * (step / dt);
+      this.vy = Math.min(this.vy + S.gravity * dt, S.maxFallSpeed);
+      this.stunTimer = Math.max(this.stunTimer, dt * 2);
+      moveAndCollide(this, world, dt);
+      if (Math.abs(this.push.x - this.x) < 0.5 || this.hitWall) {
+        this.stunTimer = Math.max(this.stunTimer, this.push.stun);
+        this.vx = 0;
+        this.push = null;
+      }
+      if (this.y > world.pixelHeight + GAME.fallRespawnMargin) this.die();
       return;
     }
     if (this.thrown) {
@@ -111,6 +128,14 @@ export class Enemy {
   }
 
   // 속박: 그 자리에 묶는다. 넉백으로 튕겨 나가지 않게 속도를 없앤다
+  // x(왼쪽 끝) 까지 time 초 동안 밀려난 뒤 stun 초 경직. 묶인 적은 밀리지 않는다
+  pushTo(x, time, stun) {
+    if (!this.alive || this.bindTimer > 0) return;
+    this.push = { x, speed: Math.abs(x - this.x) / Math.max(time, 1e-3), stun };
+    this.vx = 0;
+    this.vy = 0;
+  }
+
   bind(time) {
     if (!this.alive) return;
     this.bindTimer = Math.max(this.bindTimer, time);

@@ -179,7 +179,12 @@ function resolveSlam() {
   for (const e of enemies) {
     if (!e.alive || !overlaps(area, e)) continue;
     const dir = Math.sign(e.x + e.w / 2 - s.x) || player.facing;
-    e.takeHit(s.damage, dir, s.knockbackX, s.knockbackY, s.hitId);
+    if (!e.takeHit(s.damage, dir, s.knockbackX, s.knockbackY, s.hitId)) continue;
+    // 사슬 무기면 휘두르기 끝부분 거리로 밀어낸다 (바로 X 로 끝부분 적중을 노릴 수 있게)
+    if (s.pushToTip && player.usesChainWeapon) {
+      const tx = player.tipRangeX(dir, e.w);
+      if (dir > 0 ? tx > e.x : tx < e.x) e.pushTo(tx, s.pushTime, s.pushStun); // 바깥쪽으로만 민다
+    }
   }
   hitstopTimer = Math.max(hitstopTimer, s.hitstop);
   shake.time = shake.total = s.shakeTime;

@@ -283,6 +283,17 @@ export class Player {
     }
   }
 
+  // 사슬 휘두르기 1타의 끝부분(분동)이 닿는 거리: 적의 가까운 쪽 끝을 둘 x (side = +1 오른쪽, -1 왼쪽)
+  // 내리꽂기에 맞은 적을 여기까지 밀어내서 바로 끝부분으로 이어 칠 수 있게 한다
+  tipRangeX(side, enemyWidth) {
+    const W = this.stats.chainWeapon;
+    const L = W.combo[0].length * W.lengthMultiplier * W.arcScaleX;
+    const tipMid = L * (1 - W.tipFraction / 2); // 끝부분 구간의 가운데
+    const pivotX = this.x + this.w / 2 + side * W.pivotForward;
+    const nearEdge = pivotX + side * tipMid;
+    return side > 0 ? nearEdge : nearEdge - enemyWidth;
+  }
+
   // main.js 가 착지 충격파를 한 번 가져간다
   takeSlamImpact() {
     const s = this.slamImpact;
