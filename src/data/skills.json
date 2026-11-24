@@ -124,7 +124,7 @@
         {
           "id": "cw_weight_tune",
           "name": "분동 조율",
-          "description": "휘두를 때 가장 가까운 적까지 사슬 길이를 맞춰 끝부분이 닿게 함. 분동이 커지고 끝부분 판정 +50%",
+          "description": "휘두를 때 가장 가까운 적까지 사슬 길이를 맞춰 끝부분이 닿게 함. 분동이 커지고 끝부분 판정 +50%. 대신 끝부분 추가 피해 절반",
           "requires": [],
           "pos": [
             2,
@@ -145,13 +145,18 @@
               "stat": "chainWeapon.weightModelScale",
               "op": "set",
               "value": 1.6
+            },
+            {
+              "stat": "chainWeapon.tipBonusMultiplier",
+              "op": "set",
+              "value": 0.5
             }
           ]
         },
         {
           "id": "cw_weight_smash",
           "name": "분동 강타",
-          "description": "끝부분 피해 +50%, 짧은 기절",
+          "description": "끝부분 피해 +25%, 짧은 기절",
           "requires": [
             "cw_weight_tune"
           ],
@@ -163,7 +168,7 @@
             {
               "stat": "chainWeapon.tipDamageMultiplier",
               "op": "mul",
-              "value": 1.5
+              "value": 1.25
             },
             {
               "stat": "chainWeapon.tipStun",

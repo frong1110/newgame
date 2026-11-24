@@ -228,7 +228,8 @@ export class Player {
     const minExt = this.swingTuned ? W.tuneMinTipExtension : W.minTipExtension;
     const tip = best >= tipFrom && reach >= L * minExt;
     return {
-      damage: tip ? Math.round(S.tipDamage * W.tipDamageMultiplier) : S.damage,
+      // 끝부분 피해 = 몸통 피해 + 추가 피해 × tipBonusMultiplier(분동 조율 리스크), 그다음 × tipDamageMultiplier(분동 강타). 소수 그대로
+      damage: tip ? (S.damage + (S.tipDamage - S.damage) * W.tipBonusMultiplier) * W.tipDamageMultiplier : S.damage,
       knockbackX: S.knockbackX,
       knockbackY: S.knockbackY,
       hitstop: tip ? S.tipHitstop : S.hitstop,
