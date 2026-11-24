@@ -1,4 +1,21 @@
 # CLAUDE.md
+# Project Context: Phaser 3 Web Game Prototype
+- Engine: Phaser 3 (JavaScript/ES Modules)
+- Goal: Rapid prototyping, clean modular code, 60fps performance
+
+# Directory & Token Optimization Rules
+- NEVER read or scan `node_modules/`, `dist/`, `.git/`, or raw binary folders (`assets/images/`, `assets/audio/`).
+- Only check `assets/manifest.json` or `PreloadScene.js` to verify asset keys.
+- Keep individual files under 350 lines. Split logic into `scenes/`, `entities/`, `systems/`, and `ui/`.
+
+# Phaser Coding Conventions
+- Use Arcade Physics unless Matter.js is explicitly requested.
+- Clean up event listeners, timers, and tweens inside scene `shutdown` or `destroy` events to prevent memory leaks.
+- Keep game balance numbers (speed, HP, spawn rate) in a single `src/config/constants.js` file so tweaks don't require editing logic files.
+
+# Workflow Rules
+- Before implementing a new mechanic, briefly outline the file changes in 3-5 bullet points.
+- Output only changed code blocks or targeted edits instead of rewriting entire files.
 
 ## 컨셉
 캐릭터 1명, 방을 클리어할 때마다 스킬 후보 2~3개 중 하나를 골라 그 판의 빌드를 쌓는 로그라이트. 죽으면 스킬 초기화.
