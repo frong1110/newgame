@@ -9,7 +9,7 @@
 //     → 지형: onTerrain 'zip' 이면 그 위치로 날아감, 'retract' 면 튕겨 나옴(걸리지 않음)
 //     → 적: onEnemy 'zip' 이면 적에게 날아가 붙으며 피해, 'pull' 이면 적을 끌어옴
 //            끌어온 뒤 onPullArrive 'stop' 이면 앞에 세움, 'throw' 면 휘둘러 앞으로 던짐(회전 투척),
-//            'storm' 이면 사슬 끝에 매달고 360도 돌린 뒤 살짝 위로 띄움(철퇴 폭풍, spin).
+//            'storm' 이면 사슬 끝에 매달고 계속 돌리다가(철퇴 폭풍, spin) C 를 다시 누르면 앞으로 던짐(공중 상태)
 //            'throw'/'storm' 에서 당기는 동안 ↑ 를 누르고 있었으면 대신 위로 띄움(launch)
 //   내리찍기 (startSlam): 공중 상태 적을 따라가 감고 → 멈칫 → 바닥에 꽂음(slamdown) → 충격파
 import { GAME } from './data/index.js';
@@ -101,7 +101,7 @@ export class Chain {
     else if (this.phase === 'latch') this.updateLatch(dt, p, C);
     else if (this.phase === 'zip') this.updateZip(dt, p, world, C);
     else if (this.phase === 'pull') this.updatePull(dt, p, C);
-    else if (this.phase === 'spin') this.updateSpin(dt, p, enemies, C);
+    else if (this.phase === 'spin') this.updateSpin(dt, p, world, enemies, C);
     else if (this.phase === 'slamdown') this.updateSlamDown(dt, p, enemies, C);
   }
 
@@ -358,7 +358,9 @@ export class Chain {
     if (this.timer >= C.pullMaxTime) this.cancel();
   }
 
-  // 철퇴 폭풍: 끌어온 적을 사슬 끝에 매달고 플레이어 주위를 stormTurns 바퀴 돈 뒤 살짝 띄운다
+  // 철퇴 폭풍: 끌어온 적을 사슬 끝에 매달고 플레이어 주위를 돌린다.
+  // C 를 다시 누르면(player.js 가 releaseRequested 를 켬) 또는 stormMaxTime 이 지나면 앞으로 던진다.
+  // 던져진 적은 공중 상태라 C 를 한 번 더 누르면 내리찍기(공중 상태 적을 바닥에 꽂음)로 이어진다
   startSpin(p, enemy, C) {
     this.phase = 'spin';
     this.target = enemy;
@@ -369,21 +371,28 @@ export class Chain {
     this.spinStart = Math.atan2((ey - cy) / C.stormScaleY, ex - cx);
     this.spinAngle = this.spinStart;
     this.timer = 0;
+    this.spinTurn = 0;
+    this.lastSpinX = enemy.x;
+    this.lastSpinY = enemy.y;
+    this.releaseRequested = false;
     this.spinHit = new Set();
   }
 
-  updateSpin(dt, p, enemies, C) {
+  updateSpin(dt, p, world, enemies, C) {
     const enemy = this.target;
     if (!enemy.alive) return this.cancel();
     p.vx = 0;
     p.vy = 0;
     p.dodgeTimer = Math.max(p.dodgeTimer, dt * 2);
     this.timer += dt;
-    const k = Math.min(1, this.timer / C.stormTime);
-    // 바라보는 쪽 위로 먼저 넘어가도록 회전 방향을 정한다
-    const turn = -p.facing * Math.PI * 2 * C.stormTurns;
+    // 바라보는 쪽 위로 먼저 넘어가도록 회전 방향을 정한다. 계속 돌고, 바퀴마다 같은 적을 다시 칠 수 있다
+    const turns = this.timer / C.stormTime;
     const prev = this.spinAngle;
-    const next = this.spinStart + turn * k;
+    const next = this.spinStart - p.facing * Math.PI * 2 * turns;
+    if (Math.floor(turns) > this.spinTurn) {
+      this.spinTurn = Math.floor(turns);
+      this.spinHit.clear();
+    }
     const [cx, cy] = center(p);
     const at = (a, r) => [cx + Math.cos(a) * r, cy + Math.sin(a) * r * C.stormScaleY];
 
@@ -406,20 +415,42 @@ export class Chain {
       if (!hit) continue;
       this.spinHit.add(e);
       const dir = Math.sign(e.x + e.w / 2 - cx) || p.facing;
-      if (e.takeHit(C.stormDamage, dir, C.stormKnockbackX, C.stormKnockbackY, `${this.key}-${this.count}-storm`)) this.hitstop = C.stormHitstop;
+      if (e.takeHit(C.stormDamage, dir, C.stormKnockbackX, C.stormKnockbackY, `${this.key}-${this.count}-storm-${this.spinTurn}`)) this.hitstop = C.stormHitstop;
     }
 
     this.spinAngle = next;
     [this.hx, this.hy] = at(next, C.stormRadius);
     enemy.x = this.hx - enemy.w / 2;
     enemy.y = this.hy - enemy.h / 2;
-    if (k < 1) return;
+    // 타원 궤적의 아래쪽은 땅속이다: 지형에 겹치면 위로 올려 땅을 파고들지 않게 한다 (던질 때 땅에 박혀 있으면 날아가지 못함)
+    let lifted = 0;
+    while (lifted < C.stormGroundLift && overlapsSolid(enemy, world)) {
+      enemy.y -= 2;
+      lifted += 2;
+    }
+    if (overlapsSolid(enemy, world)) {
+      // 옆 벽 등 올려도 안 되면 지난 프레임 위치를 유지
+      enemy.x = this.lastSpinX ?? enemy.x;
+      enemy.y = this.lastSpinY ?? enemy.y;
+    }
+    this.lastSpinX = enemy.x;
+    this.lastSpinY = enemy.y;
+    [this.hx, this.hy] = center(enemy);
+    const release = this.releaseRequested && this.timer >= C.stormMinReleaseTime;
+    if (!release && this.timer < C.stormMaxTime) return;
 
-    // 다 돌면 매단 적을 살짝 위로 띄운다 (공중 상태 → 바로 C 로 내리찍기를 이어갈 수 있음)
+    // C 를 다시 눌렀거나 최대 시간이 되면 앞으로 던진다 (공중 상태: 위로 멈추지 않고 포물선으로 날아감)
     enemy.held = false;
     const hitId = `${this.key}-${this.count}`;
     enemy.takeHit(C.stormSelfDamage, p.facing, 0, 0, `${hitId}-self`);
-    enemy.launch(C.stormLaunchHeight, C.stormLaunchHangTime, C.launchGravity, p.facing * C.stormLaunchSpeedX);
+    enemy.throwAway(p.facing, {
+      throwSpeedX: C.stormThrowSpeedX,
+      throwSpeedY: C.stormThrowSpeedY,
+      throwDamage: C.stormThrowDamage,
+      throwKnockbackX: C.throwKnockbackX,
+      throwKnockbackY: C.throwKnockbackY,
+      throwHitstop: C.throwHitstop,
+    }, hitId);
     this.hitstop = C.throwHitstop;
     this.phase = null;
     this.target = null;

@@ -105,7 +105,7 @@
         {
           "id": "cw_flail_storm",
           "name": "철퇴 폭풍",
-          "description": "당긴 적을 사슬에 매달고 360도 회전, 휘말린 적 모두 피해 후 살짝 띄움",
+          "description": "당긴 적을 매달고 회전, 휘말린 적 모두 피해. C 로 던지면 공중 상태가 되고, C 로 다시 내리찍음",
           "requires": [
             "cw_slam"
           ],
