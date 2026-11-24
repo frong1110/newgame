@@ -365,8 +365,25 @@ export class Player {
     return this.invincibleTimer > 0 || this.dodgeTimer > 0;
   }
 
-  canSpecial(stunned) {
-    return !stunned && this.usesChainWeapon && this.specialCooldownTimer <= 0 && !this.isDashing && !this.pullChain.active && !this.chain.locksPlayer;
+  // 특수 버튼 사슬을 쓸 수 있는 상태인지 (대기시간은 따로 본다: 내리찍기는 대기시간 무시)
+  canUseSpecialChain(stunned) {
+    return !stunned && this.usesChainWeapon && !this.isDashing && !this.pullChain.active && !this.chain.locksPlayer;
+  }
+
+  // 사거리 안에서 가장 가까운 공중 상태 적 (내리찍기 대상)
+  findAirborneTarget(enemies) {
+    const R = this.stats.pullChain.slamRange;
+    const cx = this.x + this.w / 2, cy = this.y + this.h / 2;
+    let best = null, bestD = R;
+    for (const e of enemies) {
+      if (!e.airborne || e.held) continue;
+      const d = Math.hypot(e.x + e.w / 2 - cx, e.y + e.h / 2 - cy);
+      if (d <= bestD) {
+        best = e;
+        bestD = d;
+      }
+    }
+    return best;
   }
 
   get usesChain() {
@@ -464,12 +481,25 @@ export class Player {
       } else if (this.canDash(stunned)) this.useDash(inputDir, inputY);
     }
     // --- 특수 버튼: 사슬 당기기 (사슬 무기일 때). ↑↓ 로 위아래·대각선 조준 ---
-    if (Input.wasPressed(SPECIAL_KEY) && this.canSpecial(stunned)) {
-      const [dx, dy] = this.aim(inputDir, inputY, true);
-      if (dx !== 0) this.facing = Math.sign(dx);
-      this.attackTimer = 0;
-      this.comboTimer = 0;
-      this.pullChain.start(this, dx, dy);
+    this.holdingUp = !stunned && Input.isDown('ArrowUp'); // 회전 투척: 당기는 동안 ↑ 면 띄우기
+    if (Input.wasPressed(SPECIAL_KEY) && this.canUseSpecialChain(stunned)) {
+      // 내리찍기: 공중 상태 적이 사거리 안에 있으면 그 적을 노린다 (대기시간 무시 → 띄운 직후 바로 이어짐)
+      const airTarget = this.stats.pullChain.slamAirborne ? this.findAirborneTarget(enemies) : null;
+      if (airTarget || this.specialCooldownTimer <= 0) {
+        this.attackTimer = 0;
+        this.comboTimer = 0;
+        if (airTarget) {
+          this.facing = Math.sign(airTarget.x + airTarget.w / 2 - (this.x + this.w / 2)) || this.facing;
+          this.pullChain.startSlam(this, airTarget);
+        } else {
+          // 회전 투척이 있으면 ↑ 는 조준이 아니라 '띄우기' 입력: 사슬은 좌우로만 던지고, ↑ 를 기억해 둔다
+          const throwSkill = ['throw', 'storm'].includes(this.stats.pullChain.onPullArrive);
+          const [dx, dy] = this.aim(inputDir, inputY, !throwSkill);
+          if (dx !== 0) this.facing = Math.sign(dx);
+          this.pullChain.start(this, dx, dy);
+          if (throwSkill) this.pullChain.launchWanted = this.holdingUp;
+        }
+      }
     }
     if (this.chain.active) this.chain.update(dt, this, world, enemies);
     if (this.pullChain.active) this.pullChain.update(dt, this, world, enemies);

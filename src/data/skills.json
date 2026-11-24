@@ -59,7 +59,7 @@
         {
           "id": "cw_spin_throw",
           "name": "회전 투척",
-          "description": "당긴 적을 휘둘러 앞으로 던짐. 던진 적과 맞은 적 모두 피해",
+          "description": "당긴 적을 휘둘러 앞으로 던짐. 당기는 동안 ↑ 를 누르면 위로 띄움 (둘 다 공중 상태)",
           "requires": [],
           "pos": [
             1,
@@ -76,7 +76,7 @@
         {
           "id": "cw_slam",
           "name": "내리찍기",
-          "description": "공중의 적을 감아 바닥에 꽂으면 충격파",
+          "description": "공중 상태인 적에게 C: 사슬로 감아 바닥에 꽂고 충격파",
           "requires": [
             "cw_spin_throw"
           ],
@@ -84,13 +84,18 @@
             1,
             1
           ],
-          "implemented": false,
-          "effects": []
+          "effects": [
+            {
+              "stat": "pullChain.slamAirborne",
+              "op": "set",
+              "value": true
+            }
+          ]
         },
         {
           "id": "cw_flail_storm",
           "name": "철퇴 폭풍",
-          "description": "당기기 후 360도 회전, 휘말린 적 모두 피해",
+          "description": "당긴 적을 사슬에 매달고 360도 회전, 휘말린 적 모두 피해 후 던짐",
           "requires": [
             "cw_slam"
           ],
@@ -98,8 +103,13 @@
             1,
             2
           ],
-          "implemented": false,
-          "effects": []
+          "effects": [
+            {
+              "stat": "pullChain.onPullArrive",
+              "op": "set",
+              "value": "storm"
+            }
+          ]
         },
         {
           "id": "cw_extend",

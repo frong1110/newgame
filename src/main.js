@@ -172,7 +172,17 @@ function update(dt) {
 }
 
 // 내리꽂기: 몸쪽 ~ 분동이 떨어진 지점(left~right), 위로 height 안의 적에게 큰 피해
+function addImpactEffects(x, y, r, shakeMag, shakeTime, waveTime) {
+  shake.time = shake.total = shakeTime;
+  shake.mag = shakeMag;
+  waves.push({ x, y, r, t: 0, total: waveTime });
+}
+
 function resolveSlam() {
+  // 사슬 무기 내리찍기 충격 (피해는 chain.js 에서 이미 처리)
+  const ci = player.pullChain.takeImpact();
+  if (ci) addImpactEffects(ci.x, ci.y, ci.r, ci.shake, ci.shakeTime, ci.waveTime);
+
   const s = player.takeSlamImpact();
   if (!s) return;
   const area = { x: s.left, y: s.y - s.height, w: s.right - s.left, h: s.height + 8 };
@@ -213,11 +223,11 @@ function resolveCombat() {
         if (hit.stun > 0) e.stunTimer = Math.max(e.stunTimer, hit.stun); // 분동 강타
       }
     }
-    // 던져진 적 → 다른 적 (회전 투척)
-    if (e.thrown) {
+    // 던져져 날아가는 적(공중 상태) → 다른 적 (회전 투척). 띄워진 적은 피해 없음
+    if (e.flight && e.flight.damage > 0) {
       for (const other of enemies) {
         if (other === e || !other.alive || !overlaps(e, other)) continue;
-        const T = e.thrown;
+        const T = e.flight;
         if (other.takeHit(T.damage, Math.sign(e.vx) || 1, T.knockbackX, T.knockbackY, T.hitId)) hitstopTimer = T.hitstop;
       }
     }

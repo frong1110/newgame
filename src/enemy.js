@@ -27,7 +27,10 @@ export class Enemy {
     this.lastHitId = -1; // 같은 공격에 여러 번 맞지 않도록
     this.pull = null; // 사슬에 끌려오는 중이면 { x, y, speed } (목표 지점)
     this.bindTimer = 0; // 사슬에 묶여(속박) 움직이지 못하는 남은 시간 (감기 스킬)
-    this.thrown = null; // 회전 투척으로 날아가는 중이면 { damage, knockbackX, knockbackY, hitstop, hitId }
+    // 공중 상태: 던져지거나(throw) 띄워져서(launch) 날아가는 중이면 { kind, damage, knockbackX, knockbackY, hitstop, hitId, hangLeft }
+    // 머리 위에 '공중' 표시가 붙고, 내리찍기 스킬의 대상이 된다
+    this.flight = null;
+    this.held = false; // 철퇴 폭풍으로 사슬 끝에 매달려 있으면 true (위치는 사슬이 정함)
     this.push = null; // 정해진 x 까지 미끄러지듯 밀려나는 중이면 { x, speed, stun } (내리꽂기)
   }
 
@@ -43,6 +46,13 @@ export class Enemy {
     }
 
     this.flashTimer -= dt;
+    if (this.held) {
+      // 철퇴 폭풍: 사슬 끝에 매달려 돌아가는 중. 위치는 chain.js 가 정한다
+      this.vx = 0;
+      this.vy = 0;
+      this.stunTimer = Math.max(this.stunTimer, dt * 2);
+      return;
+    }
     if (this.pull) {
       // 사슬에 끌려오는 중: 중력·순찰 무시하고 목표 지점으로 직진
       const dx = this.pull.x - (this.x + this.w / 2);
@@ -71,12 +81,22 @@ export class Enemy {
       if (this.y > world.pixelHeight + GAME.fallRespawnMargin) this.die();
       return;
     }
-    if (this.thrown) {
-      // 던져진 상태: 순찰 없이 포물선으로 날아가다 땅이나 벽에 닿으면 멈춤 (다른 적과의 충돌은 main.js)
-      this.vy = Math.min(this.vy + S.thrownGravity * dt, S.maxFallSpeed);
+    if (this.flight) {
+      // 공중 상태: 순찰 없이 날아감. 띄워진 적은 꼭대기에서 hangLeft 동안 머문 뒤 떨어진다
+      // 땅에 닿으면(던져진 적은 벽에 닿아도) 공중 상태가 끝나고 경직 (다른 적과의 충돌은 main.js)
+      const F = this.flight;
+      const hovering = F.kind === 'launch' && this.vy >= 0 && F.hangLeft > 0;
+      if (hovering) {
+        F.hangLeft -= dt;
+        this.vx = 0;
+        this.vy = 0;
+      } else {
+        this.vy = Math.min(this.vy + (F.gravity ?? S.thrownGravity) * dt, S.maxFallSpeed);
+      }
+      this.stunTimer = Math.max(this.stunTimer, dt * 2);
       moveAndCollide(this, world, dt);
-      if (this.onGround || this.hitWall) {
-        this.thrown = null;
+      if ((this.onGround && this.vy >= 0) || (F.kind === 'throw' && this.hitWall)) {
+        this.flight = null;
         this.vx = 0;
         this.stunTimer = Math.max(this.stunTimer, S.stunTime);
       }
@@ -118,16 +138,31 @@ export class Enemy {
     this.bindTimer = 0;
     this.vx = dir * C.throwSpeedX;
     this.vy = -C.throwSpeedY;
-    this.thrown = {
+    this.flight = {
+      kind: 'throw',
       damage: C.throwDamage,
       knockbackX: C.throwKnockbackX,
       knockbackY: C.throwKnockbackY,
       hitstop: C.throwHitstop,
       hitId: `${hitId}-thrown`,
+      hangLeft: 0,
     };
   }
 
-  // 속박: 그 자리에 묶는다. 넉백으로 튕겨 나가지 않게 속도를 없앤다
+  // 위로 띄우기: height(px) 만큼 솟아올라 꼭대기에서 hang 초 머문 뒤 떨어진다 (다른 적에게 부딪혀도 피해 없음)
+  // gravity: 오르내리는 중력 (높이는 그대로, 클수록 빨리 솟고 빨리 떨어짐)
+  launch(height, hang, gravity) {
+    if (!this.alive) return;
+    this.bindTimer = 0;
+    this.vx = 0;
+    this.vy = -Math.sqrt(2 * gravity * height);
+    this.flight = { kind: 'launch', damage: 0, hangLeft: hang, gravity };
+  }
+
+  get airborne() {
+    return this.alive && this.flight !== null;
+  }
+
   // x(왼쪽 끝) 까지 time 초 동안 밀려난 뒤 stun 초 경직. 묶인 적은 밀리지 않는다
   pushTo(x, time, stun) {
     if (!this.alive || this.bindTimer > 0) return;
@@ -136,6 +171,7 @@ export class Enemy {
     this.vy = 0;
   }
 
+  // 속박: 그 자리에 묶는다. 넉백으로 튕겨 나가지 않게 속도를 없앤다
   bind(time) {
     if (!this.alive) return;
     this.bindTimer = Math.max(this.bindTimer, time);
@@ -192,6 +228,20 @@ export class Enemy {
       ctx.stroke();
       ctx.fillStyle = '#e8eef5';
       ctx.fillRect(px, py + this.h + 3, this.w * Math.min(1, this.bindTimer / this.bindTotal), 3);
+    }
+    // 공중 상태 표시: 머리 위 하늘색 화살표 + 테두리
+    if (this.flight) {
+      ctx.strokeStyle = '#78d6ff';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(px - 1.5, py - 1.5, this.w + 3, this.h + 3);
+      ctx.fillStyle = '#78d6ff';
+      const ax = px + this.w / 2, ay = py - 22;
+      ctx.beginPath();
+      ctx.moveTo(ax - 6, ay + 5);
+      ctx.lineTo(ax + 6, ay + 5);
+      ctx.lineTo(ax, ay - 3);
+      ctx.closePath();
+      ctx.fill();
     }
     // 체력 칸
     const pip = 6, gap = 2;

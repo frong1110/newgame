@@ -1,17 +1,17 @@
 # Graph Report - newgame  (2026-11-24)
 
 ## Corpus Check
-- 20 files · ~14,393 words
+- 20 files · ~16,095 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 1 file(s) not represented in the graph (top: (none) 1)
 
 ## Summary
-- 240 nodes · 430 edges · 12 communities (10 shown, 2 thin omitted)
-- Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 17 edges (avg confidence: 0.89)
+- 250 nodes · 458 edges · 12 communities (10 shown, 2 thin omitted)
+- Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 18 edges (avg confidence: 0.88)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `d632584d`
+- Built from commit: `1480b19f`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -30,13 +30,13 @@
 - World
 
 ## God Nodes (most connected - your core abstractions)
-1. `Player` - 45 edges
-2. `Chain` - 25 edges
+1. `Player` - 46 edges
+2. `Chain` - 31 edges
 3. `SkillTree` - 16 edges
-4. `Enemy` - 13 edges
-5. `moveAndCollide()` - 11 edges
-6. `center()` - 9 edges
-7. `overlaps()` - 9 edges
+4. `Enemy` - 15 edges
+5. `center()` - 14 edges
+6. `moveAndCollide()` - 11 edges
+7. `overlaps()` - 11 edges
 8. `GAME` - 8 edges
 9. `update()` - 8 edges
 10. `renderOverlay()` - 7 edges
@@ -59,11 +59,11 @@
 ## Communities (12 total, 2 thin omitted)
 
 ### Community 0 - "main.js"
-Cohesion: 0.10
-Nodes (36): Fixed-Timestep Game Loop, applySkills(), cam, choices, clamp(), ctx, frame(), isTouch (+28 more)
+Cohesion: 0.09
+Nodes (37): Fixed-Timestep Game Loop, addImpactEffects(), applySkills(), cam, choices, clamp(), ctx, frame() (+29 more)
 
 ### Community 1 - "Chain"
-Cohesion: 0.15
+Cohesion: 0.14
 Nodes (3): center(), Chain, expand()
 
 ### Community 3 - "Player"
@@ -100,23 +100,23 @@ Nodes (3): SKILLS, applyEffect(), SkillTree
 
 ## Knowledge Gaps
 - **1 isolated node(s):** `String Tilemap Level (# ground, P spawn)`
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 86 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 89 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **2 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `Player` connect `Player` to `main.js`, `index.js`, `Chain`, `CLAUDE.md`?**
-  _High betweenness centrality (0.284) - this node is a cross-community bridge._
+  _High betweenness centrality (0.278) - this node is a cross-community bridge._
 - **What connects `String Tilemap Level (# ground, P spawn)` to the rest of the system?**
   _1 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `main.js` be split into smaller, more focused modules?**
-  _Cohesion score 0.09716599190283401 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.09487179487179487 - nodes in this community are weakly interconnected._
 - **Why does `Chain` connect `Chain` to `index.js`, `Player`?**
-  _High betweenness centrality (0.099) - this node is a cross-community bridge._
-- **Should `Player` be split into smaller, more focused modules?**
-  _Cohesion score 0.0726950354609929 - nodes in this community are weakly interconnected._
+  _High betweenness centrality (0.114) - this node is a cross-community bridge._
+- **Should `Chain` be split into smaller, more focused modules?**
+  _Cohesion score 0.14285714285714285 - nodes in this community are weakly interconnected._
 - **Why does `SkillTree` connect `SkillTree` to `main.js`?**
-  _High betweenness centrality (0.091) - this node is a cross-community bridge._
-- **Should `deploy` be split into smaller, more focused modules?**
-  _Cohesion score 0.11764705882352941 - nodes in this community are weakly interconnected._
+  _High betweenness centrality (0.089) - this node is a cross-community bridge._
+- **Should `Player` be split into smaller, more focused modules?**
+  _Cohesion score 0.07020408163265306 - nodes in this community are weakly interconnected._
