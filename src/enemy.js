@@ -150,11 +150,11 @@ export class Enemy {
   }
 
   // 위로 띄우기: height(px) 만큼 솟아올라 꼭대기에서 hang 초 머문 뒤 떨어진다 (다른 적에게 부딪혀도 피해 없음)
-  // gravity: 오르내리는 중력 (높이는 그대로, 클수록 빨리 솟고 빨리 떨어짐)
-  launch(height, hang, gravity) {
+  // gravity: 오르내리는 중력 (높이는 그대로, 클수록 빨리 솟고 빨리 떨어짐), vx: 올라가는 동안 옆으로 밀리는 속도
+  launch(height, hang, gravity, vx = 0) {
     if (!this.alive) return;
     this.bindTimer = 0;
-    this.vx = 0;
+    this.vx = vx; // 올라가는 동안 옆으로 밀리는 속도 (꼭대기에서는 멈춤)
     this.vy = -Math.sqrt(2 * gravity * height);
     this.flight = { kind: 'launch', damage: 0, hangLeft: hang, gravity };
   }
