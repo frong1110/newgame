@@ -100,6 +100,12 @@
     "minTipExtension": 0.7,
     "tipDamageMultiplier": 1.0,
     "tipBindTime": 0,
+    "bindTetherRange": 260,
+    "linkShare": 0,
+    "prisonEnabled": false,
+    "prisonRange": 200,
+    "prisonMaxTargets": 3,
+    "prisonBindTime": 1.0,
     "tipStun": 0,
     "hitThickness": 12,
     "combo": [

@@ -10,5 +10,6 @@
     "vibrateMs": 8,
     "dpadDeadZone": 0.2,
     "dpadDiagonal": 0.38
-  }
+  },
+  "chainTransferTime": 0.25
 }
