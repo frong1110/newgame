@@ -14,7 +14,7 @@
         {
           "id": "cw_bind",
           "name": "감기",
-          "description": "끝부분 적중 시 적을 1초 속박",
+          "description": "끝부분 적중 시 적을 캐릭터와 사슬로 이어 1초 속박 (너무 멀어지면 끊어짐)",
           "requires": [],
           "pos": [
             0,
@@ -31,7 +31,7 @@
         {
           "id": "cw_link",
           "name": "연결",
-          "description": "묶인 적 둘이 받는 피해 30% 공유",
+          "description": "묶인 적끼리 사슬로 연결, 한 적이 받는 피해의 30%를 다른 묶인 적도 받음",
           "requires": [
             "cw_bind"
           ],
@@ -39,13 +39,18 @@
             0,
             1
           ],
-          "implemented": false,
-          "effects": []
+          "effects": [
+            {
+              "stat": "chainWeapon.linkShare",
+              "op": "set",
+              "value": 0.3
+            }
+          ]
         },
         {
           "id": "cw_prison",
           "name": "사슬 감옥",
-          "description": "묶인 적이 죽으면 사슬이 주변 적 3마리에게 전이",
+          "description": "묶인 적이 죽으면 주변 200px 안의 적 최대 3마리에게 사슬이 옮겨 붙어 속박",
           "requires": [
             "cw_link"
           ],
@@ -53,8 +58,13 @@
             0,
             2
           ],
-          "implemented": false,
-          "effects": []
+          "effects": [
+            {
+              "stat": "chainWeapon.prisonEnabled",
+              "op": "set",
+              "value": true
+            }
+          ]
         },
         {
           "id": "cw_spin_throw",

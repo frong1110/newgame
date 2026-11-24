@@ -4,6 +4,11 @@ import { ENEMIES, GAME } from './data/index.js';
 import { moveAndCollide, approach } from './physics.js';
 
 export class Enemy {
+  // 묶인 적 관련 알림 (main.js 가 연결·사슬 감옥 스킬을 처리하려고 채워 넣는다)
+  //   onBoundDamaged(enemy, damage): 묶인 적이 피해를 받음
+  //   onBoundDied(enemy): 묶인 적이 죽음
+  static hooks = { onBoundDamaged: null, onBoundDied: null };
+
   constructor(type, spawn) {
     this.type = type;
     this.stats = ENEMIES[type];
@@ -27,6 +32,7 @@ export class Enemy {
     this.lastHitId = -1; // 같은 공격에 여러 번 맞지 않도록
     this.pull = null; // 사슬에 끌려오는 중이면 { x, y, speed } (목표 지점)
     this.bindTimer = 0; // 사슬에 묶여(속박) 움직이지 못하는 남은 시간 (감기 스킬)
+    this.bindAnchor = null; // 묶은 사슬이 이어진 곳: 'player'(감기) 또는 { x, y }(사슬 감옥: 옮겨 오기 전 적이 죽은 자리)
     // 공중 상태: 던져지거나(throw) 띄워져서(launch) 날아가는 중이면 { kind, damage, knockbackX, knockbackY, hitstop, hitId, hangLeft }
     // 머리 위에 '공중' 표시가 붙고, 내리찍기 스킬의 대상이 된다
     this.flight = null;
@@ -107,6 +113,7 @@ export class Enemy {
       // 속박: 제자리에 묶임 (몸통 피해도 없음)
       this.bindTimer -= dt;
       this.stunTimer = Math.max(this.stunTimer, dt * 2);
+      if (this.bindTimer <= 0) this.bindAnchor = null;
     }
     if (this.stunTimer > 0) {
       this.stunTimer -= dt;
@@ -172,8 +179,9 @@ export class Enemy {
   }
 
   // 속박: 그 자리에 묶는다. 넉백으로 튕겨 나가지 않게 속도를 없앤다
-  bind(time) {
+  bind(time, anchor = null) {
     if (!this.alive) return;
+    if (anchor) this.bindAnchor = anchor;
     this.bindTimer = Math.max(this.bindTimer, time);
     this.bindTotal = this.bindTimer;
     this.vx = 0;
@@ -184,6 +192,7 @@ export class Enemy {
     if (!this.alive || hitId === this.lastHitId) return false;
     this.lastHitId = hitId;
     this.hp -= damage;
+    if (this.bindTimer > 0 && damage > 0) Enemy.hooks.onBoundDamaged?.(this, damage); // 연결
     this.vx = fromDir * knockX;
     this.vy = -knockY;
     this.stunTimer = this.stats.stunTime;
@@ -198,9 +207,28 @@ export class Enemy {
     return true;
   }
 
+  // 연결 스킬로 나눠 받는 피해 (넉백·경직 없음, 다시 나눠 주지 않음)
+  takeShare(amount) {
+    if (!this.alive) return;
+    this.hp -= amount;
+    this.flashTimer = this.stats.hitFlashTime;
+    if (this.hp <= 0) this.die();
+  }
+
+  // 속박 풀기 (사슬이 끊어짐)
+  release() {
+    this.bindTimer = 0;
+    this.bindAnchor = null;
+  }
+
   die() {
+    if (!this.alive) return;
+    const wasBound = this.bindTimer > 0;
     this.alive = false;
+    this.bindTimer = 0;
+    this.bindAnchor = null;
     this.respawnTimer = this.stats.respawnTime;
+    if (wasBound) Enemy.hooks.onBoundDied?.(this); // 사슬 감옥
   }
 
   draw(ctx, cam) {
