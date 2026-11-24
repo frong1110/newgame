@@ -171,14 +171,15 @@ function update(dt) {
   Input.endFrame();
 }
 
-// 내리꽂기 착지: 착지 지점 좌우 radiusX, 위로 height 안의 적에게 큰 피해
+// 내리꽂기: 분동이 떨어진 지점 좌우 radiusX, 위로 height 안의 적에게 큰 피해
 function resolveSlam() {
   const s = player.takeSlamImpact();
   if (!s) return;
   const area = { x: s.x - s.radiusX, y: s.y - s.height, w: s.radiusX * 2, h: s.height + 8 };
   for (const e of enemies) {
     if (!e.alive || !overlaps(area, e)) continue;
-    const dir = Math.sign(e.x + e.w / 2 - s.x) || player.facing;
+    // 밀어내는 방향은 플레이어 기준 (분동이 떨어진 곳 기준이면 플레이어 쪽으로 밀릴 수 있음)
+    const dir = Math.sign(e.x + e.w / 2 - (player.x + player.w / 2)) || player.facing;
     if (!e.takeHit(s.damage, dir, s.knockbackX, s.knockbackY, s.hitId)) continue;
     // 사슬 무기면 휘두르기 끝부분 거리로 밀어낸다 (바로 X 로 끝부분 적중을 노릴 수 있게)
     if (s.pushToTip && player.usesChainWeapon) {

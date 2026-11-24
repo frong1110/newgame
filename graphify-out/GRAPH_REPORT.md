@@ -1,17 +1,17 @@
 # Graph Report - newgame  (2026-11-24)
 
 ## Corpus Check
-- 20 files · ~13,695 words
+- 20 files · ~14,325 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 1 file(s) not represented in the graph (top: (none) 1)
 
 ## Summary
-- 235 nodes · 416 edges · 12 communities (10 shown, 2 thin omitted)
+- 240 nodes · 430 edges · 12 communities (10 shown, 2 thin omitted)
 - Extraction: 96% EXTRACTED · 4% INFERRED · 0% AMBIGUOUS · INFERRED: 17 edges (avg confidence: 0.89)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `74b889d3`
+- Built from commit: `444ccce5`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -30,7 +30,7 @@
 - World
 
 ## God Nodes (most connected - your core abstractions)
-1. `Player` - 40 edges
+1. `Player` - 45 edges
 2. `Chain` - 25 edges
 3. `SkillTree` - 16 edges
 4. `Enemy` - 13 edges
@@ -63,11 +63,11 @@ Cohesion: 0.10
 Nodes (36): Fixed-Timestep Game Loop, applySkills(), cam, choices, clamp(), ctx, frame(), isTouch (+28 more)
 
 ### Community 1 - "Chain"
-Cohesion: 0.14
+Cohesion: 0.15
 Nodes (3): center(), Chain, expand()
 
 ### Community 3 - "Player"
-Cohesion: 0.08
+Cohesion: 0.07
 Nodes (5): Controls (Arrows / Space / R), Double Jump, Respawn (R key), Variable Jump Height (short press = low jump), Player
 
 ### Community 4 - "input.js"
@@ -107,16 +107,16 @@ Nodes (3): SKILLS, applyEffect(), SkillTree
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `Player` connect `Player` to `main.js`, `index.js`, `Chain`, `CLAUDE.md`?**
-  _High betweenness centrality (0.264) - this node is a cross-community bridge._
+  _High betweenness centrality (0.284) - this node is a cross-community bridge._
 - **What connects `String Tilemap Level (# ground, P spawn)` to the rest of the system?**
   _1 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `main.js` be split into smaller, more focused modules?**
   _Cohesion score 0.09716599190283401 - nodes in this community are weakly interconnected._
 - **Why does `Chain` connect `Chain` to `index.js`, `Player`?**
-  _High betweenness centrality (0.101) - this node is a cross-community bridge._
-- **Should `Chain` be split into smaller, more focused modules?**
-  _Cohesion score 0.13846153846153847 - nodes in this community are weakly interconnected._
-- **Why does `SkillTree` connect `SkillTree` to `main.js`?**
-  _High betweenness centrality (0.093) - this node is a cross-community bridge._
+  _High betweenness centrality (0.099) - this node is a cross-community bridge._
 - **Should `Player` be split into smaller, more focused modules?**
-  _Cohesion score 0.07804878048780488 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.0726950354609929 - nodes in this community are weakly interconnected._
+- **Why does `SkillTree` connect `SkillTree` to `main.js`?**
+  _High betweenness centrality (0.091) - this node is a cross-community bridge._
+- **Should `deploy` be split into smaller, more focused modules?**
+  _Cohesion score 0.11764705882352941 - nodes in this community are weakly interconnected._
