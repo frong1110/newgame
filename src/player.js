@@ -46,6 +46,7 @@ export class Player {
     this.slamImpact = null; // 분동이 땅에 닿는 순간 main.js 가 가져가 처리하는 충격파 정보
     this.slamWeight = null; // 내리꽂는 분동 위치 [x, y]
     this.slamCount = 0;
+    this.swingLengthScale = 1; // 이번 타의 사슬 길이 배율 (분동 조율로 바뀜)
     this.swingDeg = null; // 이번 프레임 휘두르기 각도 (사슬 판정용)
     this.prevSwingDeg = null;
     this.dashCooldownTimer = 0;
@@ -139,7 +140,42 @@ export class Player {
   }
 
   get chainLength() {
-    return this.step.length * this.weapon.lengthMultiplier;
+    return this.step.length * this.weapon.lengthMultiplier * (this.swingLengthScale ?? 1);
+  }
+
+  // 끝부분(분동) 판정 구간 길이 비율. 판정 배율(분동 조율)만큼 넓어진다
+  get tipFractionEffective() {
+    const W = this.weapon;
+    return Math.min(0.9, W.tipFraction * W.tipHitMultiplier);
+  }
+
+  // 분동 조율: 앞쪽 최대 사거리 안에서 가장 가까운 적까지의 거리에 맞춰 이번 타의 사슬 길이 배율을 정한다.
+  // 사슬은 뻗어 나가며 적의 앞쪽 끝에 먼저 닿으므로, 끝부분 구간의 가운데를 '적의 앞쪽 끝 + tuneAimInset' 에 맞춘다
+  // (처음 닿는 순간 분동이 닿게). tuneStrength 만큼만 보정하고, 적이 없으면 1(기본 길이)
+  tuneSwingLength(enemies) {
+    const W = this.weapon;
+    const base = this.step.length * W.lengthMultiplier;
+    // 휘두르며 앞으로 내딛는 거리만큼 미리 앞에서 잰다
+    const S = this.step;
+    const lunge = S.lungeSpeed * S.lungeTime * (this.onGround ? 1 : W.airLungeMultiplier);
+    const pivotX = this.x + this.w / 2 + this.facing * (W.pivotForward + lunge);
+    const pivotY = this.y + this.h / 2;
+    const maxReach = base * W.tuneMaxLengthMul * W.arcScaleX;
+    let bestD = Infinity;
+    for (const e of enemies) {
+      if (!e.alive) continue;
+      const dx = (e.x + e.w / 2 - pivotX) * this.facing;
+      const dy = Math.abs(e.y + e.h / 2 - pivotY);
+      if (dx <= 0 || dy > W.tuneVerticalRange || dx - e.w / 2 > maxReach) continue;
+      bestD = Math.min(bestD, dx - e.w / 2 + W.tuneAimInset); // 앞쪽 끝 + 조금 안쪽
+    }
+    this.tuneTargetDistance = Number.isFinite(bestD) ? bestD : null;
+    this.swingTuned = Number.isFinite(bestD);
+    if (!this.swingTuned) return 1;
+    const tipMid = 1 - this.tipFractionEffective / 2;
+    const ideal = bestD / (W.arcScaleX * tipMid);
+    const clamped = Math.max(base * W.tuneMinLengthMul, Math.min(base * W.tuneMaxLengthMul, ideal));
+    return (base + (clamped - base) * W.tuneStrength) / base;
   }
 
   // 사슬 휘두르기 궤적의 점: 플레이어 앞쪽 축을 중심으로, 가로·세로 배율을 준 타원 위
@@ -165,9 +201,11 @@ export class Player {
     const L = this.chainLength;
     const reach = L * this.chainExtension(this.attackElapsed);
     // 분동은 언제나 사슬 끝에 있으므로, 지금 뻗은 끝에서 tipFraction 만큼이 끝부분 판정
-    const tipFrom = reach - L * W.tipFraction;
+    const tipFrom = reach - L * this.tipFractionEffective;
+    // 끝부분은 판정 배율만큼 두껍게 (분동 조율), 몸통은 기본 두께
     const pad = W.hitThickness / 2;
-    const box = { x: e.x - pad, y: e.y - pad, w: e.w + pad * 2, h: e.h + pad * 2 };
+    const tipPad = pad * W.tipHitMultiplier;
+    const inBox = (px, py, p) => px >= e.x - p && px <= e.x + e.w + p && py >= e.y - p && py <= e.y + e.h + p;
     const a0 = this.prevSwingDeg ?? this.swingDeg, a1 = this.swingDeg;
     const n = Math.max(1, Math.ceil(Math.abs(a1 - a0) / 3));
     let best = -1;
@@ -176,7 +214,7 @@ export class Player {
       const deg = a0 + ((a1 - a0) * i) / n;
       for (let r = reach; r > 8; r -= 5) {
         const [px, py] = this.chainPoint(deg, r);
-        if (px >= box.x && px <= box.x + box.w && py >= box.y && py <= box.y + box.h) {
+        if (inBox(px, py, r >= tipFrom ? tipPad : pad)) {
           if (r > best) {
             best = r;
             point = [px, py];
@@ -186,7 +224,9 @@ export class Player {
       }
     }
     if (best < 0) return null;
-    const tip = best >= tipFrom && reach >= L * W.minTipExtension;
+    // 분동 조율로 길이를 맞춘 타는 덜 뻗어도 끝부분 (거리를 일부러 맞췄으므로)
+    const minExt = this.swingTuned ? W.tuneMinTipExtension : W.minTipExtension;
+    const tip = best >= tipFrom && reach >= L * minExt;
     return {
       damage: tip ? Math.round(S.tipDamage * W.tipDamageMultiplier) : S.damage,
       knockbackX: S.knockbackX,
@@ -199,8 +239,10 @@ export class Player {
     };
   }
 
-  startAttack(step) {
+  startAttack(step, enemies = []) {
     this.comboStep = step;
+    this.swingTuned = false;
+    this.swingLengthScale = this.usesChainWeapon && this.weapon.tuneEnabled ? this.tuneSwingLength(enemies) : 1;
     this.swingDeg = null;
     this.prevSwingDeg = null;
     this.attackTimer = this.attackDuration;
@@ -209,7 +251,7 @@ export class Player {
   }
 
   // 공격 입력·콤보 진행
-  updateAttack(dt, stunned) {
+  updateAttack(dt, stunned, enemies = []) {
     const A = this.weapon;
     const lastStep = A.combo.length - 1;
     const wasAttacking = this.attackTimer > 0;
@@ -229,9 +271,9 @@ export class Player {
 
     if (this.attackTimer > 0) {
       // 회수 동작 중 chainDelay 가 지난 뒤 입력이 있으면 남은 회수를 끊고 다음 타로
-      if (this.canChain && this.comboStep < lastStep) this.startAttack(this.comboStep + 1);
+      if (this.canChain && this.comboStep < lastStep) this.startAttack(this.comboStep + 1, enemies);
     } else {
-      this.startAttack(this.comboTimer > 0 && this.comboStep < lastStep ? this.comboStep + 1 : 0);
+      this.startAttack(this.comboTimer > 0 && this.comboStep < lastStep ? this.comboStep + 1 : 0, enemies);
     }
   }
 
@@ -518,7 +560,7 @@ export class Player {
     }
 
     // --- 공격 ---
-    this.updateAttack(dt, stunned);
+    this.updateAttack(dt, stunned, enemies);
     const attacking = this.attackTimer > 0;
     if (attacking) {
       // 사슬 판정은 지난 프레임 → 이번 프레임 각도 사이를 훑는다
@@ -725,7 +767,7 @@ export class Player {
       for (let i = 0; i <= steps; i++) ctx.lineTo(...at(windup + ((end - windup) * i) / steps, L * (0.6 + 0.4 * (i / steps))));
       ctx.stroke();
       // 끝부분 판정 구간 표시
-      const tipStart = L - L * this.weapon.tipFraction;
+      const tipStart = L - L * this.tipFractionEffective;
       ctx.strokeStyle = `rgba(255,204,77,${trailAlpha * 0.6})`;
       ctx.lineWidth = 3;
       ctx.beginPath();
@@ -748,12 +790,13 @@ export class Player {
       const by = (1 - k) * (1 - k) * y0 + 2 * (1 - k) * k * y1 + k * k * y2;
       ctx.fillRect(bx - 2, by - 2, 4, 4);
     }
-    // 분동
+    // 분동 (분동 조율이면 weightModelScale 만큼 크게)
+    const ws = 10 * this.weapon.weightModelScale;
     ctx.fillStyle = '#5b6573';
-    ctx.fillRect(x2 - 5, y2 - 5, 10, 10);
+    ctx.fillRect(x2 - ws / 2, y2 - ws / 2, ws, ws);
     ctx.strokeStyle = '#e8eef5';
     ctx.lineWidth = 1;
-    ctx.strokeRect(x2 - 4.5, y2 - 4.5, 9, 9);
+    ctx.strokeRect(x2 - ws / 2 + 0.5, y2 - ws / 2 + 0.5, ws - 1, ws - 1);
   }
 
   // 내리꽂기 사슬: 손 → 분동. 내려칠 때는 머리 위 궤적, 떨어질 때는 수직 잔상, 거둘 때는 손으로 돌아옴
