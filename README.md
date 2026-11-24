@@ -1,7 +1,7 @@
 # newgame
 game development with claude ai
 
-현재 버전: **0.3.1** — 변경 기록은 [CHANGELOG.md](CHANGELOG.md). 게임 화면 위쪽 가운데에도 버전이 표시됩니다.
+현재 버전: **0.3.2** — 변경 기록은 [CHANGELOG.md](CHANGELOG.md). 게임 화면 위쪽 가운데에도 버전이 표시됩니다.
 
 ## 플레이
 **https://frong1110.github.io/newgame/**
@@ -76,11 +76,11 @@ npm run dev
 - `src/data/` — 속도, 중력, 점프력 등 모든 수치(`player.json`, `enemies.json`, `game.json`), 스킬(`skills.json`)와 레벨(`levels/*.txt`). 튜닝은 여기서
 - `src/input.js` — 키보드 입력 (누름/뗌을 프레임 단위로 구분)
 - `src/world.js` — 타일맵 충돌·렌더링
-- `src/player.js` — 캐릭터 이동, 점프, 공격, 피격
+- `src/player.js` — 캐릭터 본체(이동, 점프, 피격). 무기는 `playerWeapon.js`, 대시는 `playerDash.js`, 내리꽂기는 `playerSlam.js`
 - `src/enemy.js` — 테스트용 적 (순찰, 피격, 리스폰)
 - `src/physics.js` — 타일 충돌, 겹침 판정
 - `src/chain.js` — 던지는 사슬 (대시 사슬 스킬, 당기기)
 - `src/skills.js`, `src/skillUI.js` — 스킬 트리 로직과 선택·트리 화면
-- `src/main.js` — 고정 시간 간격 게임 루프, 카메라
+- `src/main.js` — 고정 시간 간격 게임 루프, 메뉴·방 진행, 카메라. 타격 판정 `combat.js`, 이펙트 `effects.js`, 결박 갈래 `bindChains.js`, 화면 글자 `hud.js`
 
 프로젝트 규칙과 컨셉은 [CLAUDE.md](CLAUDE.md) 참고.
