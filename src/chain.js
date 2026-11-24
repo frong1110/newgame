@@ -13,7 +13,7 @@
 //            'throw'/'storm' 에서 당기는 동안 ↑ 를 누르고 있었으면 대신 위로 띄움(launch)
 //   내리찍기 (startSlam): 공중 상태 적을 따라가 감고 → 멈칫 → 바닥에 꽂음(slamdown) → 충격파
 import { GAME } from './data/index.js';
-import { moveAndCollide, overlaps } from './physics.js';
+import { moveAndCollide, overlaps, overlapsSolid } from './physics.js';
 
 const SUBSTEP = 4; // 사슬 끝이 한 번에 움직이는 최대 거리(px). 얇은 지형을 뚫지 않게
 
@@ -249,8 +249,11 @@ export class Chain {
     this.timer += dt;
     const enemy = this.target;
     if (enemy && !enemy.alive) return this.finishZip(p, C, true);
-    const [tx, ty] = enemy ? center(enemy) : [this.anchor.x, this.anchor.y];
-    [this.hx, this.hy] = [tx, ty];
+    [this.hx, this.hy] = enemy ? center(enemy) : [this.anchor.x, this.anchor.y];
+    // 적에게 날아갈 때는 몸 중심이 아니라 '내 발이 적의 발보다 살짝 위'를 노린다.
+    // 같은 높이의 적에게 수평으로 날아가다 조금씩 내려가 절벽 모서리에 걸리는 것을 막는다
+    const tx = this.hx;
+    const ty = enemy ? Math.min(this.hy, enemy.y + enemy.h - p.h / 2 - C.feetClearance) : this.hy;
 
     const [cx, cy] = center(p);
     const ddx = tx - cx, ddy = ty - cy;
@@ -278,8 +281,29 @@ export class Chain {
     p.vx = this.zdx * (step / dt);
     p.vy = this.zdy * (step / dt);
     moveAndCollide(p, world, dt);
+    if (p.hitWall) this.ledgeAssist(p, world, dt, before, C);
     const moved = Math.hypot(p.x - before[0], p.y - before[1]);
     if (moved < step * 0.3 || this.timer >= C.zipMaxTime) this.finishZip(p, C, false);
+  }
+
+  // 모서리 보정: 옆으로 막혔을 때 조금 위로 올리면 지나갈 수 있으면 올려서 다시 움직인다 (낭떠러지 건너편 턱 등)
+  ledgeAssist(p, world, dt, before, C) {
+    const [vx, vy] = [p.vx, p.vy];
+    for (let lift = 2; lift <= C.ledgeAssist; lift += 2) {
+      p.x = before[0];
+      p.y = before[1] - lift;
+      if (overlapsSolid(p, world)) continue;
+      p.vx = this.zdx * Math.hypot(vx, vy);
+      p.vy = Math.min(0, this.zdy * Math.hypot(vx, vy)); // 올라선 뒤 다시 파고들지 않게 아래로는 움직이지 않음
+      moveAndCollide(p, world, dt);
+      if (!p.hitWall) return;
+    }
+    // 올려도 안 되면 원래 결과로 (막힘)
+    p.x = before[0];
+    p.y = before[1];
+    p.vx = vx;
+    p.vy = vy;
+    moveAndCollide(p, world, dt);
   }
 
   finishZip(p, C, keepMomentum) {

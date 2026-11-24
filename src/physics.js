@@ -46,6 +46,17 @@ function resolveY(b, world) {
   }
 }
 
+// 몸체가 지금 위치에서 단단한 타일과 겹치는지
+export function overlapsSolid(b, world) {
+  const T = GAME.tileSize;
+  const x0 = Math.floor(b.x / T), x1 = Math.floor((b.x + b.w - 0.01) / T);
+  const y0 = Math.floor(b.y / T), y1 = Math.floor((b.y + b.h - 0.01) / T);
+  for (let ty = y0; ty <= y1; ty++) {
+    for (let tx = x0; tx <= x1; tx++) if (world.isSolid(tx, ty)) return true;
+  }
+  return false;
+}
+
 export function overlaps(a, b) {
   return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 }

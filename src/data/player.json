@@ -197,6 +197,8 @@
     "latchShake": 2,
     "zipSpeed": 950,
     "zipMaxTime": 0.6,
+    "ledgeAssist": 14,
+    "feetClearance": 2,
     "arriveDistance": 14,
     "endSpeed": 240,
     "invincibleExtra": 0.08,
