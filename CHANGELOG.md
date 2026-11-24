@@ -5,6 +5,20 @@
 - **MINOR** (0.**1**.0 → 0.**2**.0): 새 기능·스킬·적·맵 등 플레이가 달라지는 추가
 - **PATCH** (0.1.**0** → 0.1.**1**): 버그 수정, 수치 조정, 연출·문서만 바뀐 경우
 
+## [0.3.0] - 2026-11-24
+사슬 무기 분동 갈래 1단계를 '분동 조율'로 교체.
+
+### 추가
+- **분동 조율** (분동 1단계, 기존 '사슬 늘이기' 대체)
+  - 휘두르기를 시작할 때 앞쪽 최대 사거리(기본 길이 × `tuneMaxLengthMul` 1.4) 안에서 가장 가까운 적까지의 거리를 재고, 그 타의 사슬 길이를 늘이거나 줄여서 끝부분이 그 적에게 닿게 함. 적이 없으면 기본 길이
+  - 보정 강도 `tuneStrength`(1), 길이 범위 `tuneMinLengthMul`~`tuneMaxLengthMul`, 위아래 대상 범위 `tuneVerticalRange`, 겨누는 지점 `tuneAimInset`, 조율된 타의 끝부분 판정 조건 `tuneMinTipExtension`
+  - 분동 그림 1.6배(`weightModelScale`), 끝부분 판정 길이·두께 1.5배(`tipHitMultiplier`)
+- 끝부분 적중 시 짧은 번쩍임 이펙트(`game.json` `tipFlashTime`/`tipFlashRadius`)와 전용 효과음(임시, Web Audio 로 즉석 생성: `game.json` `sfx.tipHit`). 모든 끝부분 적중에 나옴
+
+### 바뀐 점
+- 분동 강타의 선행 스킬이 분동 조율로 바뀜
+- 효과음 모듈 `src/audio.js` 추가 (첫 키·터치 입력 때 소리가 켜짐)
+
 ## [0.2.0] - 2026-11-24
 사슬 무기 결박 갈래 완성.
 

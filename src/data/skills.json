@@ -122,9 +122,9 @@
           ]
         },
         {
-          "id": "cw_extend",
-          "name": "사슬 늘이기",
-          "description": "사거리 +30%, 끝부분 판정 확대",
+          "id": "cw_weight_tune",
+          "name": "분동 조율",
+          "description": "휘두를 때 가장 가까운 적까지 사슬 길이를 맞춰 끝부분이 닿게 함. 분동이 커지고 끝부분 판정 +50%",
           "requires": [],
           "pos": [
             2,
@@ -132,14 +132,19 @@
           ],
           "effects": [
             {
-              "stat": "chainWeapon.lengthMultiplier",
-              "op": "mul",
-              "value": 1.3
+              "stat": "chainWeapon.tuneEnabled",
+              "op": "set",
+              "value": true
             },
             {
-              "stat": "chainWeapon.tipFraction",
-              "op": "add",
-              "value": 0.15
+              "stat": "chainWeapon.tipHitMultiplier",
+              "op": "set",
+              "value": 1.5
+            },
+            {
+              "stat": "chainWeapon.weightModelScale",
+              "op": "set",
+              "value": 1.6
             }
           ]
         },
@@ -148,7 +153,7 @@
           "name": "분동 강타",
           "description": "끝부분 피해 +50%, 짧은 기절",
           "requires": [
-            "cw_extend"
+            "cw_weight_tune"
           ],
           "pos": [
             2,

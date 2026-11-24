@@ -7,6 +7,7 @@ import { overlaps } from './physics.js';
 import { SkillTree } from './skills.js';
 import { drawChoicePanel, drawTreePanel, hitTestTree } from './skillUI.js';
 import { setupTouchControls, setTouchPanelOpen } from './touch.js';
+import { playSfx } from './audio.js';
 
 const VERSION = __APP_VERSION__; // package.json 의 version (vite.config.js 에서 넣어 줌)
 document.title = `newgame v${VERSION}`;
@@ -21,6 +22,7 @@ const enemies = world.enemySpawns.map((pos) => new Enemy('dummy', pos));
 const cam = { x: 0, y: 0, w: canvas.width, h: canvas.height };
 const puffs = []; // 2단 점프 이펙트
 const sparks = []; // 사슬 끝부분 적중 이펙트
+const tipFlashes = []; // 끝부분 적중 번쩍임
 const waves = []; // 내리꽂기 충격파 이펙트
 const shake = { time: 0, total: 0, mag: 0 }; // 화면 흔들림
 const transfers = []; // 사슬 감옥: 죽은 적 자리에서 주변 적으로 사슬이 뻗어 가는 이펙트
@@ -251,6 +253,8 @@ function update(dt) {
   for (const w of waves) w.t += dt;
   while (waves.length && waves[0].t > waves[0].total) waves.shift();
   shake.time -= dt;
+  for (const f of tipFlashes) f.t += dt;
+  while (tipFlashes.length && tipFlashes[0].t > GAME.tipFlashTime) tipFlashes.shift();
   for (const s of sparks) s.t += dt;
   while (sparks.length && sparks[0].t > GAME.sparkDuration) sparks.shift();
 
@@ -316,6 +320,8 @@ function resolveCombat() {
       hitstopTimer = hit.hitstop;
       if (hit.tip) {
         sparks.push({ x: hit.point[0], y: hit.point[1], t: 0 });
+        tipFlashes.push({ x: hit.point[0], y: hit.point[1], t: 0 });
+        playSfx('tipHit');
         if (hit.bind > 0) e.bind(hit.bind, 'player'); // 감기: 캐릭터와 사슬로 이어 묶음
         if (hit.stun > 0) e.stunTimer = Math.max(e.stunTimer, hit.stun); // 분동 강타
       }
@@ -370,6 +376,22 @@ function render() {
     ctx.fillStyle = `rgba(255,255,255,${0.6 * (1 - k)})`;
     ctx.fillRect(w.x - view.x - r, w.y - view.y - 3, r * 2, 3);
   }
+
+  // 끝부분 적중 번쩍임: 짧게 밝아졌다 사라지는 흰 원
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  for (const f of tipFlashes) {
+    const k = f.t / GAME.tipFlashTime;
+    const r = GAME.tipFlashRadius * (0.6 + 0.4 * k);
+    const grad = ctx.createRadialGradient(f.x - view.x, f.y - view.y, 0, f.x - view.x, f.y - view.y, r);
+    grad.addColorStop(0, `rgba(255,255,240,${0.95 * (1 - k)})`);
+    grad.addColorStop(1, 'rgba(255,230,150,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(f.x - view.x, f.y - view.y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
 
   // 끝부분 적중: 노란 십자 불꽃
   for (const sp of sparks) {
@@ -437,4 +459,4 @@ requestAnimationFrame(frame);
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
 // 개발 서버에서만 디버깅/자동 테스트용으로 상태를 노출 (배포 빌드에는 포함되지 않음)
-if (import.meta.env.DEV) window.__game = { player, enemies, world, skillTree, get mode() { return mode; }, get room() { return room; }, get choices() { return choices; } };
+if (import.meta.env.DEV) window.__game = { playSfx, player, enemies, world, skillTree, get mode() { return mode; }, get room() { return room; }, get choices() { return choices; } };

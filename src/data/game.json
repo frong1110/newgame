@@ -11,5 +11,17 @@
     "dpadDeadZone": 0.2,
     "dpadDiagonal": 0.38
   },
-  "chainTransferTime": 0.25
+  "chainTransferTime": 0.25,
+  "tipFlashTime": 0.12,
+  "tipFlashRadius": 26,
+  "sfx": {
+    "masterVolume": 0.35,
+    "tipHit": {
+      "freqStart": 1400,
+      "freqEnd": 520,
+      "duration": 0.09,
+      "noise": 0.5,
+      "volume": 0.8
+    }
+  }
 }
