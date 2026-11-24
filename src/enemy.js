@@ -110,8 +110,13 @@ export class Enemy {
     };
   }
 
+  // 속박: 그 자리에 묶는다. 넉백으로 튕겨 나가지 않게 속도를 없앤다
   bind(time) {
+    if (!this.alive) return;
     this.bindTimer = Math.max(this.bindTimer, time);
+    this.bindTotal = this.bindTimer;
+    this.vx = 0;
+    this.vy = Math.max(this.vy, 0);
   }
 
   takeHit(damage, fromDir, knockX, knockY, hitId) {
@@ -123,6 +128,11 @@ export class Enemy {
     this.stunTimer = this.stats.stunTime;
     this.flashTimer = this.stats.hitFlashTime;
     this.dir = -fromDir; // 때린 쪽을 바라보게
+    if (this.bindTimer > 0) {
+      // 묶인 적은 맞아도 밀려나지 않는다
+      this.vx = 0;
+      this.vy = Math.max(this.vy, 0);
+    }
     if (this.hp <= 0) this.die();
     return true;
   }
@@ -136,24 +146,27 @@ export class Enemy {
     if (!this.alive) return;
     const px = Math.round(this.x - cam.x);
     const py = Math.round(this.y - cam.y);
-    ctx.fillStyle = this.flashTimer > 0 ? '#ffffff' : '#c0392b';
+    ctx.fillStyle = this.flashTimer > 0 ? '#ffffff' : this.bindTimer > 0 ? '#7d5a8c' : '#c0392b';
     ctx.fillRect(px, py, this.w, this.h);
     // 눈
     ctx.fillStyle = '#111';
     const eyeX = px + this.w / 2 + this.dir * 5;
     ctx.fillRect(eyeX - 5, py + 8, 4, 5);
     ctx.fillRect(eyeX + 2, py + 8, 4, 5);
-    // 속박: 몸에 감긴 사슬
+    // 속박: 몸에 X 자로 감긴 사슬 + 남은 시간 막대
     if (this.bindTimer > 0) {
-      ctx.strokeStyle = '#cfd8e3';
-      ctx.lineWidth = 2;
-      for (let i = 1; i <= 3; i++) {
-        const yy = py + (this.h * i) / 4;
-        ctx.beginPath();
-        ctx.moveTo(px - 2, yy - 3);
-        ctx.lineTo(px + this.w + 2, yy + 3);
-        ctx.stroke();
-      }
+      ctx.strokeStyle = '#e8eef5';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(px - 3, py - 1);
+      ctx.lineTo(px + this.w + 3, py + this.h + 1);
+      ctx.moveTo(px + this.w + 3, py - 1);
+      ctx.lineTo(px - 3, py + this.h + 1);
+      ctx.moveTo(px - 3, py + this.h / 2);
+      ctx.lineTo(px + this.w + 3, py + this.h / 2);
+      ctx.stroke();
+      ctx.fillStyle = '#e8eef5';
+      ctx.fillRect(px, py + this.h + 3, this.w * Math.min(1, this.bindTimer / this.bindTotal), 3);
     }
     // 체력 칸
     const pip = 6, gap = 2;

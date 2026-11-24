@@ -180,9 +180,10 @@
     "endSpeedY": 300
   },
   "chain": {
-    "twoPress": true,
+    "twoPress": false,
     "onTerrain": "zip",
     "onPullArrive": "stop",
+    "slamAfterZip": false,
     "onEnemy": "zip",
     "speed": 2400,
     "range": 300,
@@ -248,5 +249,20 @@
     "throwKnockbackX": 300,
     "throwKnockbackY": 240,
     "throwHitstop": 0.08
+  },
+  "slam": {
+    "readyTime": 0.8,
+    "diveSpeed": 1300,
+    "maxDiveTime": 1.0,
+    "recovery": 0.22,
+    "damage": 4,
+    "radiusX": 95,
+    "height": 60,
+    "knockbackX": 320,
+    "knockbackY": 380,
+    "hitstop": 0.12,
+    "shake": 7,
+    "shakeTime": 0.22,
+    "waveTime": 0.3
   }
 }

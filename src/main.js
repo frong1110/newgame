@@ -19,6 +19,8 @@ const enemies = world.enemySpawns.map((pos) => new Enemy('dummy', pos));
 const cam = { x: 0, y: 0, w: canvas.width, h: canvas.height };
 const puffs = []; // 2단 점프 이펙트
 const sparks = []; // 사슬 끝부분 적중 이펙트
+const waves = []; // 내리꽂기 충격파 이펙트
+const shake = { time: 0, total: 0, mag: 0 }; // 화면 흔들림
 
 const STEP = GAME.fixedStep; // 고정 시간 간격 물리 (프레임레이트와 무관하게 같은 조작감)
 let acc = 0;
@@ -149,6 +151,9 @@ function update(dt) {
   }
   for (const p of puffs) p.t += dt;
   while (puffs.length && puffs[0].t > GAME.puffDuration) puffs.shift();
+  for (const w of waves) w.t += dt;
+  while (waves.length && waves[0].t > waves[0].total) waves.shift();
+  shake.time -= dt;
   for (const s of sparks) s.t += dt;
   while (sparks.length && sparks[0].t > GAME.sparkDuration) sparks.shift();
 
@@ -166,7 +171,24 @@ function update(dt) {
   Input.endFrame();
 }
 
+// 내리꽂기 착지: 착지 지점 좌우 radiusX, 위로 height 안의 적에게 큰 피해
+function resolveSlam() {
+  const s = player.takeSlamImpact();
+  if (!s) return;
+  const area = { x: s.x - s.radiusX, y: s.y - s.height, w: s.radiusX * 2, h: s.height + 8 };
+  for (const e of enemies) {
+    if (!e.alive || !overlaps(area, e)) continue;
+    const dir = Math.sign(e.x + e.w / 2 - s.x) || player.facing;
+    e.takeHit(s.damage, dir, s.knockbackX, s.knockbackY, s.hitId);
+  }
+  hitstopTimer = Math.max(hitstopTimer, s.hitstop);
+  shake.time = shake.total = s.shakeTime;
+  shake.mag = s.shake;
+  waves.push({ x: s.x, y: s.y, r: s.radiusX, t: 0, total: s.waveTime });
+}
+
 function resolveCombat() {
+  resolveSlam();
   // 사슬(대시·당기기)로 적을 맞힌 경우
   for (const c of [player.chain, player.pullChain]) {
     const h = c.takeHitstop();
@@ -202,7 +224,11 @@ function resolveCombat() {
 
 function render() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  const view = { x: Math.round(cam.x), y: Math.round(cam.y), w: cam.w, h: cam.h };
+  // 화면 흔들림: 남은 시간에 비례해 약해지는 무작위 흔들림
+  const k = shake.time > 0 ? shake.time / shake.total : 0;
+  const sx = k ? (Math.random() * 2 - 1) * shake.mag * k : 0;
+  const sy = k ? (Math.random() * 2 - 1) * shake.mag * k : 0;
+  const view = { x: Math.round(cam.x + sx), y: Math.round(cam.y + sy), w: cam.w, h: cam.h };
   world.draw(ctx, view);
 
   for (const p of puffs) {
@@ -216,6 +242,19 @@ function render() {
 
   for (const e of enemies) e.draw(ctx, view);
   player.draw(ctx, view);
+
+  // 내리꽂기 충격파: 착지 지점에서 좌우로 퍼지는 반원 + 먼지 선
+  for (const w of waves) {
+    const k = w.t / w.total;
+    const r = w.r * (0.3 + 0.9 * k);
+    ctx.strokeStyle = `rgba(255,230,160,${1 - k})`;
+    ctx.lineWidth = 4 * (1 - k) + 1;
+    ctx.beginPath();
+    ctx.ellipse(w.x - view.x, w.y - view.y, r, r * 0.35, 0, Math.PI, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = `rgba(255,255,255,${0.6 * (1 - k)})`;
+    ctx.fillRect(w.x - view.x - r, w.y - view.y - 3, r * 2, 3);
+  }
 
   // 끝부분 적중: 노란 십자 불꽃
   for (const sp of sparks) {

@@ -40,6 +40,11 @@ export class Player {
     if (this.chain) this.chain.cancel();
     if (this.pullChain) this.pullChain.cancel();
     this.specialCooldownTimer = 0;
+    this.slamReadyTimer = 0; // 내리꽂기를 쓸 수 있는 남은 시간 (사슬 이동 직후)
+    this.slamState = null; // null | 'dive' | 'recover'
+    this.slamTimer = 0;
+    this.slamImpact = null; // 착지 순간 main.js 가 가져가 처리하는 충격파 정보
+    this.slamCount = 0;
     this.swingDeg = null; // 이번 프레임 휘두르기 각도 (사슬 판정용)
     this.prevSwingDeg = null;
     this.dashCooldownTimer = 0;
@@ -231,7 +236,58 @@ export class Player {
 
   // 대시 중이거나 사슬로 멈칫·날아가는 중 (조작 불가)
   get isDashing() {
-    return this.dashTimer > 0 || this.chain.locksPlayer || this.pullChain.locksPlayer;
+    return this.dashTimer > 0 || this.chain.locksPlayer || this.pullChain.locksPlayer || this.slamState !== null;
+  }
+
+  // 사슬 이동이 끝났을 때 (chain.js 가 호출). 내리꽂기 스킬이 있으면 잠깐 동안 공격 키로 내리꽂을 수 있다
+  onChainArrive(chain) {
+    if (chain === this.chain && this.stats.chain.slamAfterZip) this.slamReadyTimer = this.stats.slam.readyTime;
+  }
+
+  startSlam() {
+    this.slamState = 'dive';
+    this.slamTimer = 0;
+    this.slamReadyTimer = 0;
+    this.attackTimer = 0;
+    this.comboTimer = 0;
+    this.attackBufferTimer = 0;
+    this.ghostTimer = 0;
+    this.slamCount++;
+  }
+
+  // 내리꽂기: 수직으로 빠르게 떨어지고(무적), 착지하면 충격파
+  updateSlam(dt, world) {
+    const S = this.stats.slam;
+    this.slamTimer += dt;
+    if (this.slamState === 'dive') {
+      this.vx = 0;
+      this.vy = S.diveSpeed;
+      this.dodgeTimer = Math.max(this.dodgeTimer, dt * 2);
+      moveAndCollide(this, world, dt);
+      if (this.onGround) {
+        this.slamImpact = {
+          x: this.x + this.w / 2,
+          y: this.y + this.h,
+          hitId: `slam-${this.slamCount}`,
+          ...S,
+        };
+        this.squash = this.stats.landSquash * 2;
+        this.slamState = 'recover';
+        this.slamTimer = 0;
+      } else if (this.slamTimer >= S.maxDiveTime) {
+        this.slamState = null;
+      }
+    } else if (this.slamState === 'recover') {
+      this.vx = 0;
+      if (this.slamTimer >= S.recovery) this.slamState = null;
+    }
+  }
+
+  // main.js 가 착지 충격파를 한 번 가져간다
+  takeSlamImpact() {
+    const s = this.slamImpact;
+    this.slamImpact = null;
+    return s;
   }
 
   get isInvincible() {
@@ -304,7 +360,7 @@ export class Player {
     const D = this.stats.dash;
     for (const g of this.ghosts) g.t += dt;
     while (this.ghosts.length && this.ghosts[0].t > D.ghostLifetime) this.ghosts.shift();
-    if (this.dashTimer > 0 || this.chain.zipping) {
+    if (this.dashTimer > 0 || this.chain.zipping || this.slamState === 'dive') {
       this.ghostTimer -= dt;
       if (this.ghostTimer <= 0) {
         this.ghosts.push({ x: this.x, y: this.y, facing: this.facing, t: 0 });
@@ -321,6 +377,7 @@ export class Player {
     this.dodgeTimer -= dt;
     this.dashCooldownTimer -= dt;
     this.specialCooldownTimer -= dt;
+    this.slamReadyTimer -= dt;
     if (this.onGround) this.airDashesUsed = 0;
     this.updateGhosts(dt);
 
@@ -345,6 +402,12 @@ export class Player {
     }
     if (this.chain.active) this.chain.update(dt, this, world, enemies);
     if (this.pullChain.active) this.pullChain.update(dt, this, world, enemies);
+    // 내리꽂기: 사슬 이동 직후 공격 키 (이동 중에 미리 누른 것도 인정)
+    if (
+      this.slamReadyTimer > 0 && !this.slamState && !this.chain.locksPlayer && !stunned &&
+      (Input.wasPressed(ATTACK_KEY) || this.attackBufferTimer > 0)
+    ) this.startSlam();
+    if (this.slamState) this.updateSlam(dt, world);
     if (this.isDashing) {
       if (this.dashTimer > 0) this.updateDash(dt, world);
       // 대시 중 눌린 점프·공격은 버퍼에 남겨서 대시가 끝나면 이어지게
@@ -440,6 +503,8 @@ export class Player {
     this.dashTimer = 0;
     this.chain.cancel();
     this.pullChain.cancel();
+    this.slamState = null;
+    this.slamReadyTimer = 0;
     return true;
   }
 
@@ -466,6 +531,17 @@ export class Player {
 
     if (this.usesChainWeapon) this.drawChainWhip(ctx, cam);
     else this.drawSword(ctx, px, py - h / 2);
+
+    if (this.slamReadyTimer > 0) {
+      // 내리꽂기 가능 표시: 머리 위 아래쪽 화살표
+      ctx.fillStyle = '#ffcc4d';
+      ctx.beginPath();
+      ctx.moveTo(px - 7, py - h - 16);
+      ctx.lineTo(px + 7, py - h - 16);
+      ctx.lineTo(px, py - h - 7);
+      ctx.closePath();
+      ctx.fill();
+    }
 
     ctx.fillStyle = this.stunTimer > 0 ? '#ff8a65' : this.dodgeTimer > 0 ? '#bff3ff' : '#ffcc4d';
     ctx.fillRect(px - w / 2, py - h, w, h);
