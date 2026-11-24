@@ -4,5 +4,6 @@
   "maxFrameTime": 0.25,
   "cameraFollow": 8,
   "fallRespawnMargin": 200,
-  "puffDuration": 0.3
+  "puffDuration": 0.3,
+  "sparkDuration": 0.22
 }

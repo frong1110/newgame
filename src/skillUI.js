@@ -58,21 +58,22 @@ export function drawChoicePanel(ctx, choices, selected, skillTree, room) {
   text(ctx, '1·2·3 또는 ←→ 로 고르고 Enter / Space / X 로 확정', W / 2, 430, { size: 14, color: '#8fa3bb', align: 'center' });
 }
 
-// 트리 화면의 노드 위치 계산 (그리기와 클릭 판정이 같이 쓴다)
-const NODE_W = 260, NODE_H = 74, COL_GAP = 50, ROW_GAP = 36;
+// 트리 화면의 노드 위치 계산 (그리기와 클릭 판정이 같이 쓴다). 트리는 가로로 나란히 놓는다
+const NODE_W = 196, NODE_H = 86, COL_GAP = 16, ROW_GAP = 22, TREE_GAP = 44, TOP = 168;
 export function treeLayout(skillTree) {
+  const trees = Object.values(skillTree.trees);
+  const colsOf = (t) => Math.max(...t.skills.map((s) => s.pos[0])) + 1;
+  const widthOf = (t) => colsOf(t) * NODE_W + (colsOf(t) - 1) * COL_GAP;
+  const total = trees.reduce((sum, t) => sum + widthOf(t), 0) + (trees.length - 1) * TREE_GAP;
   const headers = [];
   const nodes = [];
-  let top = 130;
-  for (const [, tree] of Object.entries(skillTree.trees)) {
-    headers.push({ name: tree.name, y: top });
-    const cols = Math.max(...tree.skills.map((s) => s.pos[0])) + 1;
-    const left = W / 2 - (cols * NODE_W + (cols - 1) * COL_GAP) / 2;
+  let left = W / 2 - total / 2;
+  for (const tree of trees) {
+    headers.push({ name: tree.name, x: left, w: widthOf(tree), branches: tree.branches });
     for (const s of tree.skills) {
-      nodes.push({ skill: s, x: left + s.pos[0] * (NODE_W + COL_GAP), y: top + 24 + s.pos[1] * (NODE_H + ROW_GAP), w: NODE_W, h: NODE_H });
+      nodes.push({ skill: s, x: left + s.pos[0] * (NODE_W + COL_GAP), y: TOP + s.pos[1] * (NODE_H + ROW_GAP), w: NODE_W, h: NODE_H });
     }
-    const rows = Math.max(...tree.skills.map((s) => s.pos[1])) + 1;
-    top += 24 + rows * (NODE_H + ROW_GAP) + 20;
+    left += widthOf(tree) + TREE_GAP;
   }
   return { headers, nodes };
 }
@@ -84,13 +85,20 @@ export function hitTestTree(skillTree, x, y) {
 }
 
 export function drawTreePanel(ctx, skillTree, cursorId) {
-  dim(ctx, 0.82);
-  text(ctx, '스킬 트리', W / 2, 60, { size: 28, bold: true, align: 'center' });
-  text(ctx, '테스트용: 스킬을 클릭하거나 ↑↓ + Enter 로 배우기 / 해제 · R 초기화', W / 2, 88, { size: 13, color: '#8fa3bb', align: 'center' });
+  dim(ctx, 0.85);
+  text(ctx, '스킬 트리', W / 2, 46, { size: 26, bold: true, align: 'center' });
+  text(ctx, '테스트용: 스킬을 클릭하거나 ↑↓ + Enter 로 배우기 / 해제 · R 초기화', W / 2, 72, { size: 13, color: '#8fa3bb', align: 'center' });
+  const weaponName = skillTree.weapon === 'chain' ? '사슬' : '검';
+  text(ctx, `주 무기: ${weaponName}  (Q 로 바꾸기, 테스트용)`, W / 2, 96, { size: 14, color: '#ffcc4d', align: 'center' });
 
   const { headers, nodes } = treeLayout(skillTree);
   const rectOf = Object.fromEntries(nodes.map((n) => [n.skill.id, n]));
-  for (const h of headers) text(ctx, `${h.name} 트리`, 60, h.y, { size: 18, bold: true, color: '#78d6ff' });
+  for (const h of headers) {
+    text(ctx, `${h.name} 트리`, h.x, 128, { size: 17, bold: true, color: '#78d6ff' });
+    (h.branches || []).forEach((b, i) =>
+      text(ctx, b, h.x + i * (NODE_W + COL_GAP) + NODE_W / 2, 152, { size: 13, color: '#8fa3bb', align: 'center' }),
+    );
+  }
 
   // 선행 관계 선
   for (const { skill: s, x, y, w } of nodes) {
@@ -108,29 +116,38 @@ export function drawTreePanel(ctx, skillTree, cursorId) {
   for (const { skill: s, x, y, w: nw, h: nh } of nodes) {
     const owned = skillTree.has(s.id);
     const open = skillTree.isLearnable(s.id);
+    const todo = !skillTree.isImplemented(s.id);
     ctx.fillStyle = owned ? '#5a4a1a' : open ? '#22324a' : '#161d28';
     ctx.fillRect(x, y, nw, nh);
     ctx.strokeStyle = owned ? '#ffcc4d' : open ? '#cfd8e3' : '#3a4656';
     ctx.lineWidth = owned ? 3 : 1;
+    if (todo) ctx.setLineDash([4, 4]);
     ctx.strokeRect(x + 0.5, y + 0.5, nw - 1, nh - 1);
+    ctx.setLineDash([]);
     if (s.id === cursorId) {
       ctx.strokeStyle = '#78d6ff';
       ctx.lineWidth = 2;
       ctx.strokeRect(x - 4.5, y - 4.5, nw + 9, nh + 9);
     }
     const color = owned ? '#ffcc4d' : open ? '#fff' : '#6b7a8c';
-    text(ctx, s.name, x + nw / 2, y + 26, { size: 16, bold: true, color, align: 'center' });
-    wrapText(ctx, s.description, x + nw / 2, y + 46, nw - 20, 16, { size: 12, color: owned || open ? '#cfd8e3' : '#56657a' });
+    text(ctx, s.name, x + nw / 2, y + 22, { size: 15, bold: true, color, align: 'center' });
+    if (todo) text(ctx, '준비 중', x + nw - 8, y + 16, { size: 11, color: '#8fa3bb', align: 'right' });
+    wrapText(ctx, s.description, x + nw / 2, y + 42, nw - 16, 15, { size: 12, color: owned || open ? '#cfd8e3' : '#56657a' });
   }
 
   // 범례
-  const ly = H - 40;
+  const ly = H - 22;
   [['#ffcc4d', '보유'], ['#cfd8e3', '배울 수 있음'], ['#3a4656', '잠김']].forEach(([c, label], i) => {
-    const x = W / 2 - 170 + i * 120;
+    const x = W / 2 - 230 + i * 120;
     ctx.strokeStyle = c;
     ctx.lineWidth = 2;
     ctx.strokeRect(x, ly - 12, 14, 14);
     text(ctx, label, x + 22, ly, { size: 13, color: '#cfd8e3' });
   });
-  text(ctx, 'K 로 닫기', W - 30, H - 28, { size: 13, color: '#8fa3bb', align: 'right' });
+  ctx.strokeStyle = '#3a4656';
+  ctx.setLineDash([4, 4]);
+  ctx.strokeRect(W / 2 + 130, ly - 12, 14, 14);
+  ctx.setLineDash([]);
+  text(ctx, '준비 중 (설계만)', W / 2 + 152, ly, { size: 13, color: '#cfd8e3' });
+  text(ctx, 'K 로 닫기', W - 20, ly, { size: 13, color: '#8fa3bb', align: 'right' });
 }

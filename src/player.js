@@ -1,9 +1,10 @@
 import { PLAYER, GAME } from './data/index.js';
 import { Input } from './input.js';
-import { moveAndCollide, approach } from './physics.js';
+import { moveAndCollide, approach, overlaps } from './physics.js';
 import { Chain } from './chain.js';
 
 const ATTACK_KEY = 'KeyX';
+const SPECIAL_KEY = 'KeyC'; // 특수 버튼 (사슬: 당기기)
 const DASH_KEYS = ['ShiftLeft', 'ShiftRight'];
 
 export class Player {
@@ -13,7 +14,8 @@ export class Player {
     this.w = PLAYER.width;
     this.h = PLAYER.height;
     this.attackId = 0; // 공격할 때마다 증가. 적이 같은 공격에 중복으로 맞지 않게 하는 용도
-    this.chain = new Chain(); // 사슬 스킬
+    this.chain = new Chain('chain', 'dashCooldownTimer'); // 대시 트리의 사슬 스킬
+    this.pullChain = new Chain('pullChain', 'specialCooldownTimer'); // 사슬 무기 특수 버튼: 당기기
     this.respawn(x, y);
   }
 
@@ -36,6 +38,10 @@ export class Player {
     this.dashDirX = 1; // 대시 방향 (단위 벡터)
     this.dashDirY = 0;
     if (this.chain) this.chain.cancel();
+    if (this.pullChain) this.pullChain.cancel();
+    this.specialCooldownTimer = 0;
+    this.swingDeg = null; // 이번 프레임 휘두르기 각도 (사슬 판정용)
+    this.prevSwingDeg = null;
     this.dashCooldownTimer = 0;
     this.dodgeTimer = 0; // 대시 무적 (대시 직후 약간 더 유지)
     this.airDashesUsed = 0;
@@ -45,8 +51,17 @@ export class Player {
     this.invincibleTimer = 0;
   }
 
+  // 현재 주 무기 수치: 사슬(chainWeapon) 또는 검(attack, 테스트용)
+  get weapon() {
+    return this.usesChainWeapon ? this.stats.chainWeapon : this.stats.attack;
+  }
+
+  get usesChainWeapon() {
+    return this.stats.weapon === 'chain';
+  }
+
   get step() {
-    return this.stats.attack.combo[this.comboStep];
+    return this.weapon.combo[this.comboStep];
   }
 
   get attackDuration() {
@@ -92,8 +107,96 @@ export class Player {
     };
   }
 
+  // 공격 시작 후 t 초일 때 휘두르는 각도(도). 0 = 정면, 음수 = 위쪽
+  swingAngle(t) {
+    const S = this.step;
+    const from = S.fromAngle, to = S.toAngle;
+    const windup = from - Math.sign(to - from) * 15; // 반대쪽으로 살짝 젖혔다가 휘두름
+    if (t < S.startup) return from + (windup - from) * (t / S.startup);
+    if (t < S.startup + S.active) {
+      const k = (t - S.startup) / S.active;
+      return windup + (to - windup) * (1 - (1 - k) * (1 - k)); // 빠르게 시작해서 끝에서 감속
+    }
+    return to;
+  }
+
+  // 사슬이 뻗은 정도 (0~1): 준비 때 감겨 있다가 휘두르며 끝까지 뻗고, 회수하며 감긴다
+  chainExtension(t) {
+    const S = this.step;
+    const coiled = 0.35;
+    if (t < S.startup) return coiled;
+    if (t < S.startup + S.active) {
+      const k = (t - S.startup) / S.active;
+      return coiled + (1 - coiled) * (1 - (1 - k) * (1 - k));
+    }
+    return Math.max(0, 1 - (t - S.startup - S.active) / S.recovery);
+  }
+
+  get chainLength() {
+    return this.step.length * this.weapon.lengthMultiplier;
+  }
+
+  // 사슬 휘두르기 궤적의 점: 플레이어 앞쪽 축을 중심으로, 가로·세로 배율을 준 타원 위
+  chainPoint(deg, r) {
+    const W = this.weapon;
+    const rad = (deg * Math.PI) / 180;
+    const ox = this.x + this.w / 2 + this.facing * W.pivotForward;
+    const oy = this.y + this.h / 2;
+    return [ox + this.facing * Math.cos(rad) * r * W.arcScaleX, oy + Math.sin(rad) * r * W.arcScaleY];
+  }
+
+  // 이번 프레임 공격이 적 e 에 맞는지. 맞으면 피해 정보, 아니면 null
+  attackHitTest(e) {
+    if (!this.isAttackActive) return null;
+    const S = this.step;
+    if (!this.usesChainWeapon) {
+      const hb = this.getAttackHitbox();
+      if (!overlaps(hb, e)) return null;
+      return { damage: S.damage, knockbackX: S.knockbackX, knockbackY: S.knockbackY, hitstop: S.hitstop, tip: false };
+    }
+    // 사슬: 지난 프레임 각도 → 이번 프레임 각도 사이를 훑으며, 바깥(끝부분)부터 검사
+    const W = this.weapon;
+    const L = this.chainLength;
+    const reach = L * this.chainExtension(this.attackElapsed);
+    // 분동은 언제나 사슬 끝에 있으므로, 지금 뻗은 끝에서 tipFraction 만큼이 끝부분 판정
+    const tipFrom = reach - L * W.tipFraction;
+    const pad = W.hitThickness / 2;
+    const box = { x: e.x - pad, y: e.y - pad, w: e.w + pad * 2, h: e.h + pad * 2 };
+    const a0 = this.prevSwingDeg ?? this.swingDeg, a1 = this.swingDeg;
+    const n = Math.max(1, Math.ceil(Math.abs(a1 - a0) / 3));
+    let best = -1;
+    let point = null;
+    for (let i = 0; i <= n; i++) {
+      const deg = a0 + ((a1 - a0) * i) / n;
+      for (let r = reach; r > 8; r -= 5) {
+        const [px, py] = this.chainPoint(deg, r);
+        if (px >= box.x && px <= box.x + box.w && py >= box.y && py <= box.y + box.h) {
+          if (r > best) {
+            best = r;
+            point = [px, py];
+          }
+          break;
+        }
+      }
+    }
+    if (best < 0) return null;
+    const tip = best >= tipFrom && reach >= L * W.minTipExtension;
+    return {
+      damage: tip ? Math.round(S.tipDamage * W.tipDamageMultiplier) : S.damage,
+      knockbackX: S.knockbackX,
+      knockbackY: S.knockbackY,
+      hitstop: tip ? S.tipHitstop : S.hitstop,
+      tip,
+      bind: tip ? W.tipBindTime : 0,
+      stun: tip ? W.tipStun : 0,
+      point,
+    };
+  }
+
   startAttack(step) {
     this.comboStep = step;
+    this.swingDeg = null;
+    this.prevSwingDeg = null;
     this.attackTimer = this.attackDuration;
     this.attackBufferTimer = 0;
     this.attackId++;
@@ -101,7 +204,7 @@ export class Player {
 
   // 공격 입력·콤보 진행
   updateAttack(dt, stunned) {
-    const A = this.stats.attack;
+    const A = this.weapon;
     const lastStep = A.combo.length - 1;
     const wasAttacking = this.attackTimer > 0;
     if (this.attackTimer > 0) this.attackTimer -= dt;
@@ -128,11 +231,15 @@ export class Player {
 
   // 대시 중이거나 사슬로 멈칫·날아가는 중 (조작 불가)
   get isDashing() {
-    return this.dashTimer > 0 || this.chain.locksPlayer;
+    return this.dashTimer > 0 || this.chain.locksPlayer || this.pullChain.locksPlayer;
   }
 
   get isInvincible() {
     return this.invincibleTimer > 0 || this.dodgeTimer > 0;
+  }
+
+  canSpecial(stunned) {
+    return !stunned && this.usesChainWeapon && this.specialCooldownTimer <= 0 && !this.isDashing && !this.pullChain.active && !this.chain.locksPlayer;
   }
 
   get usesChain() {
@@ -140,14 +247,14 @@ export class Player {
   }
 
   canDash(stunned) {
-    if (stunned || this.isDashing || this.chain.active || this.dashCooldownTimer > 0) return false;
+    if (stunned || this.isDashing || this.chain.active || this.pullChain.active || this.dashCooldownTimer > 0) return false;
     if (this.usesChain) return true; // 사슬은 대기시간만 있고 공중 횟수 제한 없음
     return this.onGround || this.airDashesUsed < this.stats.dash.maxAirDashes;
   }
 
   // 방향키 입력 → 대시/사슬 방향 (단위 벡터). 대각선 대시 스킬이 없으면 좌우만
-  aim(ix, iy) {
-    const y = this.stats.dash.directions === 8 ? iy : 0;
+  aim(ix, iy, eightWay = this.stats.dash.directions === 8) {
+    const y = eightWay ? iy : 0;
     if (ix === 0 && y === 0) return [this.facing, 0];
     const len = Math.hypot(ix, y);
     return [ix / len, y / len];
@@ -213,6 +320,7 @@ export class Player {
     this.invincibleTimer -= dt;
     this.dodgeTimer -= dt;
     this.dashCooldownTimer -= dt;
+    this.specialCooldownTimer -= dt;
     if (this.onGround) this.airDashesUsed = 0;
     this.updateGhosts(dt);
 
@@ -227,24 +335,39 @@ export class Player {
         this.chain.trigger(this);
       } else if (this.canDash(stunned)) this.useDash(inputDir, inputY);
     }
+    // --- 특수 버튼: 사슬 당기기 (사슬 무기일 때). ↑↓ 로 위아래·대각선 조준 ---
+    if (Input.wasPressed(SPECIAL_KEY) && this.canSpecial(stunned)) {
+      const [dx, dy] = this.aim(inputDir, inputY, true);
+      if (dx !== 0) this.facing = Math.sign(dx);
+      this.attackTimer = 0;
+      this.comboTimer = 0;
+      this.pullChain.start(this, dx, dy);
+    }
     if (this.chain.active) this.chain.update(dt, this, world, enemies);
+    if (this.pullChain.active) this.pullChain.update(dt, this, world, enemies);
     if (this.isDashing) {
       if (this.dashTimer > 0) this.updateDash(dt, world);
       // 대시 중 눌린 점프·공격은 버퍼에 남겨서 대시가 끝나면 이어지게
       if (Input.wasPressed('Space')) this.jumpBufferTimer = C.jumpBuffer;
-      if (Input.wasPressed(ATTACK_KEY)) this.attackBufferTimer = C.attack.inputBuffer;
+      if (Input.wasPressed(ATTACK_KEY)) this.attackBufferTimer = this.weapon.inputBuffer;
       return;
     }
 
     // --- 공격 ---
     this.updateAttack(dt, stunned);
     const attacking = this.attackTimer > 0;
+    if (attacking) {
+      // 사슬 판정은 지난 프레임 → 이번 프레임 각도 사이를 훑는다
+      const deg = this.swingAngle(this.attackElapsed);
+      this.prevSwingDeg = this.swingDeg ?? deg;
+      this.swingDeg = deg;
+    }
     const lunging = attacking && this.attackElapsed < this.step.lungeTime;
 
     // --- 좌우 이동 ---
     const dir = inputDir;
     if (dir !== 0 && !attacking) this.facing = dir; // 공격 중에는 방향 고정
-    const maxSpeed = C.moveSpeed * (attacking && this.onGround ? C.attack.moveSpeedMultiplier : 1);
+    const maxSpeed = C.moveSpeed * (attacking && this.onGround ? this.weapon.moveSpeedMultiplier : 1);
     const accel = this.onGround ? C.groundAccel : C.airAccel;
     const decel = this.onGround ? C.groundDecel : C.airDecel;
     if (stunned) {
@@ -252,7 +375,7 @@ export class Player {
       this.vx = approach(this.vx, 0, C.airDecel * dt);
     } else if (lunging) {
       // 공격하면서 앞으로 살짝 내딛기
-      this.vx = this.facing * this.step.lungeSpeed * (this.onGround ? 1 : C.attack.airLungeMultiplier);
+      this.vx = this.facing * this.step.lungeSpeed * (this.onGround ? 1 : this.weapon.airLungeMultiplier);
     } else if (dir !== 0) {
       this.vx = approach(this.vx, dir * maxSpeed, accel * dt);
     } else {
@@ -316,11 +439,13 @@ export class Player {
     this.attackBufferTimer = 0;
     this.dashTimer = 0;
     this.chain.cancel();
+    this.pullChain.cancel();
     return true;
   }
 
   draw(ctx, cam) {
     this.chain.draw(ctx, cam, this);
+    this.pullChain.draw(ctx, cam, this);
     // 대시 잔상
     const D = this.stats.dash;
     for (const g of this.ghosts) {
@@ -339,7 +464,8 @@ export class Player {
     const px = this.x + this.w / 2 - cam.x;
     const py = this.y + this.h - cam.y; // 발 기준
 
-    this.drawSword(ctx, px, py - h / 2);
+    if (this.usesChainWeapon) this.drawChainWhip(ctx, cam);
+    else this.drawSword(ctx, px, py - h / 2);
 
     ctx.fillStyle = this.stunTimer > 0 ? '#ff8a65' : this.dodgeTimer > 0 ? '#bff3ff' : '#ffcc4d';
     ctx.fillRect(px - w / 2, py - h, w, h);
@@ -358,19 +484,9 @@ export class Player {
     const S = this.step;
     const L = S.swordLength;
     const from = S.fromAngle, to = S.toAngle; // 각도(도). 0 = 정면, 음수 = 위쪽
-    const sweep = Math.sign(to - from);
-    const windup = from - sweep * 15;
+    const windup = from - Math.sign(to - from) * 15;
     const ox = cx + this.facing * A.pivotForward;
-
-    let deg;
-    if (t < S.startup) {
-      deg = from + (windup - from) * (t / S.startup);
-    } else if (t < S.startup + S.active) {
-      const k = (t - S.startup) / S.active;
-      deg = windup + (to - windup) * (1 - (1 - k) * (1 - k)); // 빠르게 시작해서 끝에서 감속
-    } else {
-      deg = to;
-    }
+    const deg = this.swingAngle(t);
     // 타원형 궤적: 가로(앞)로 늘리고 세로로 눌러서 납작한 아치를 만든다
     const at = (d, r) => {
       const rad = (d * Math.PI) / 180;
@@ -399,5 +515,66 @@ export class Player {
     ctx.moveTo(...at(deg, 6));
     ctx.lineTo(...at(deg, L));
     ctx.stroke();
+  }
+
+  // 사슬 휘두르기: 감긴 사슬이 채찍처럼 뻗으며 휘어지고, 끝의 분동이 궤적을 남긴다
+  drawChainWhip(ctx, cam) {
+    const t = this.attackElapsed;
+    if (t < 0) return;
+    const S = this.step;
+    const from = S.fromAngle, to = S.toAngle;
+    const sweep = Math.sign(to - from);
+    const windup = from - sweep * 15;
+    const deg = this.swingAngle(t);
+    const L = this.chainLength;
+    const reach = L * this.chainExtension(t);
+    const at = (d, r) => {
+      const [x, y] = this.chainPoint(d, r);
+      return [x - cam.x, y - cam.y];
+    };
+    const active = t >= S.startup && t < S.startup + S.active;
+    const recoveryT = t - S.startup - S.active;
+
+    // 분동 궤적 (휘두르는 동안 + 회수 초반)
+    const trailAlpha = t < S.startup ? 0 : recoveryT < 0 ? 0.5 : 0.5 * Math.max(0, 1 - recoveryT / (S.recovery * 0.4));
+    if (trailAlpha > 0) {
+      ctx.strokeStyle = `rgba(255,255,255,${trailAlpha})`;
+      ctx.lineWidth = 5;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      const steps = 16;
+      const end = active ? deg : to;
+      for (let i = 0; i <= steps; i++) ctx.lineTo(...at(windup + ((end - windup) * i) / steps, L * (0.6 + 0.4 * (i / steps))));
+      ctx.stroke();
+      // 끝부분 판정 구간 표시
+      const tipStart = L - L * this.weapon.tipFraction;
+      ctx.strokeStyle = `rgba(255,204,77,${trailAlpha * 0.6})`;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(...at(end, tipStart));
+      ctx.lineTo(...at(end, L));
+      ctx.stroke();
+    }
+
+    // 사슬 몸통: 손 → 분동까지, 휘두르는 반대쪽으로 처져서 채찍처럼 휜다
+    const [x0, y0] = at(deg, 4);
+    const [x2, y2] = at(deg, reach);
+    const lag = active ? 22 : 0;
+    const [x1, y1] = at(deg - sweep * lag, reach * 0.55);
+    const len = Math.max(1, Math.hypot(x2 - x0, y2 - y0));
+    const n = Math.max(2, Math.floor(len / 7));
+    ctx.fillStyle = '#b8c4d2';
+    for (let i = 1; i < n; i++) {
+      const k = i / n;
+      const bx = (1 - k) * (1 - k) * x0 + 2 * (1 - k) * k * x1 + k * k * x2;
+      const by = (1 - k) * (1 - k) * y0 + 2 * (1 - k) * k * y1 + k * k * y2;
+      ctx.fillRect(bx - 2, by - 2, 4, 4);
+    }
+    // 분동
+    ctx.fillStyle = '#5b6573';
+    ctx.fillRect(x2 - 5, y2 - 5, 10, 10);
+    ctx.strokeStyle = '#e8eef5';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x2 - 4.5, y2 - 4.5, 9, 9);
   }
 }
