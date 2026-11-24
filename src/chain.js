@@ -8,9 +8,12 @@
 //     → 잠깐 멈칫(latch: 사슬이 팽팽해지며 떨림, 플레이어 정지)
 //     → 지형: onTerrain 'zip' 이면 그 위치로 날아감, 'retract' 면 튕겨 나옴(걸리지 않음)
 //     → 적: onEnemy 'zip' 이면 적에게 날아가 붙으며 피해, 'pull' 이면 적을 끌어옴
-//            끌어온 뒤 onPullArrive 'stop' 이면 앞에 세움, 'throw' 면 휘둘러 앞으로 던짐(회전 투척)
+//            끌어온 뒤 onPullArrive 'stop' 이면 앞에 세움, 'throw' 면 휘둘러 앞으로 던짐(회전 투척),
+//            'storm' 이면 사슬 끝에 매달고 360도 돌린 뒤 던짐(철퇴 폭풍, spin).
+//            'throw'/'storm' 에서 당기는 동안 ↑ 를 누르고 있었으면 대신 위로 띄움(launch)
+//   내리찍기 (startSlam): 공중 상태 적을 따라가 감고 → 멈칫 → 바닥에 꽂음(slamdown) → 충격파
 import { GAME } from './data/index.js';
-import { moveAndCollide, overlaps } from './physics.js';
+import { moveAndCollide, overlaps, overlapsSolid } from './physics.js';
 
 const SUBSTEP = 4; // 사슬 끝이 한 번에 움직이는 최대 거리(px). 얇은 지형을 뚫지 않게
 
@@ -19,7 +22,8 @@ export class Chain {
   constructor(statsKey = 'chain', cooldownProp = 'dashCooldownTimer') {
     this.key = statsKey;
     this.cooldownProp = cooldownProp;
-    this.phase = null; // null | 'throw' | 'hooked' | 'latch' | 'zip' | 'pull' | 'retract'
+    this.phase = null; // null | 'throw' | 'hooked' | 'latch' | 'zip' | 'pull' | 'spin' | 'slamdown' | 'retract'
+    this.impact = null; // 내리찍기 충격 (main.js 가 화면 흔들림·충격파 이펙트에 씀)
     this.count = 0;
     this.hitstop = 0;
   }
@@ -38,12 +42,14 @@ export class Chain {
 
   // 플레이어 조작을 막는 단계 (멈칫 + 날아가기)
   get locksPlayer() {
-    return this.phase === 'latch' || this.phase === 'zip';
+    return this.phase === 'latch' || this.phase === 'zip' || this.phase === 'spin';
   }
 
   start(p, dx, dy) {
     const C = p.stats[this.key];
     this.phase = 'throw';
+    this.homing = null; // 내리찍기: 따라갈 적
+    this.launchWanted = false; // 당기는 동안 ↑ 를 눌렀는지 (회전 투척 띄우기)
     this.dx = dx;
     this.dy = dy;
     [this.hx, this.hy] = center(p);
@@ -55,8 +61,27 @@ export class Chain {
     p[this.cooldownProp] = C.cooldown;
   }
 
+  // 내리찍기: 공중 상태인 적을 향해 사슬을 던지고, 날아가는 동안 그 적을 따라간다
+  startSlam(p, enemy) {
+    const [cx, cy] = center(p);
+    const [ex, ey] = center(enemy);
+    const d = Math.hypot(ex - cx, ey - cy) || 1;
+    this.start(p, (ex - cx) / d, (ey - cy) / d);
+    this.homing = enemy;
+  }
+
+  // main.js 가 충격 정보를 한 번 가져간다
+  takeImpact() {
+    const i = this.impact;
+    this.impact = null;
+    return i;
+  }
+
   cancel() {
-    if (this.target) this.target.pull = null;
+    if (this.target) {
+      this.target.pull = null;
+      this.target.held = false;
+    }
     this.phase = null;
     this.target = null;
   }
@@ -76,9 +101,12 @@ export class Chain {
     else if (this.phase === 'latch') this.updateLatch(dt, p, C);
     else if (this.phase === 'zip') this.updateZip(dt, p, world, C);
     else if (this.phase === 'pull') this.updatePull(dt, p, C);
+    else if (this.phase === 'spin') this.updateSpin(dt, p, enemies, C);
+    else if (this.phase === 'slamdown') this.updateSlamDown(dt, p, enemies, C);
   }
 
   updateThrow(dt, p, world, enemies, C) {
+    if (this.homing) return this.updateHomingThrow(dt, p, C);
     let remaining = C.speed * dt;
     while (remaining > 0) {
       const step = Math.min(SUBSTEP, remaining, C.range - this.traveled);
@@ -109,6 +137,28 @@ export class Chain {
         return C.twoPress ? this.hook(C) : this.begin(p, C);
       }
     }
+  }
+
+  // 내리찍기 사슬: 지형·다른 적은 무시하고 노린 적에게 곧장 날아간다
+  updateHomingThrow(dt, p, C) {
+    const enemy = this.homing;
+    if (!enemy.alive) return (this.phase = 'retract');
+    const [ex, ey] = center(enemy);
+    const ddx = ex - this.hx, ddy = ey - this.hy;
+    const dist = Math.hypot(ddx, ddy);
+    const step = C.speed * dt;
+    if (dist <= step + C.hookSize) {
+      this.target = enemy;
+      this.homing = null;
+      enemy.flashTimer = enemy.stats.hitFlashTime;
+      enemy.pull = { x: ex, y: ey, speed: 0 }; // 멈칫하는 동안 공중에 붙잡아 둔다
+      enemy.flight = null;
+      return this.latch('slamdown', C.slamLatchTime);
+    }
+    this.hx += (ddx / dist) * step;
+    this.hy += (ddy / dist) * step;
+    this.traveled += step;
+    if (this.traveled > C.slamRange * 1.5) this.phase = 'retract';
   }
 
   hook(C) {
@@ -174,7 +224,11 @@ export class Chain {
     this.phase = this.next;
     this.timer = 0;
     if (this.phase === 'pull') this.target.pull.speed = C.pullSpeed;
-    else if (this.target) this.target.pull = null; // 적에게 날아갈 때는 적을 놓아준다
+    else if (this.phase === 'slamdown') {
+      // 바로 아래로 곧장 꽂는다 (땅에 닿을 때까지)
+      const [ex, ey] = center(this.target);
+      this.target.pull = { x: ex, y: ey + 10000, speed: C.slamDownSpeed };
+    } else if (this.target) this.target.pull = null; // 적에게 날아갈 때는 적을 놓아준다
   }
 
   updateRetract(dt, p, C) {
@@ -195,8 +249,11 @@ export class Chain {
     this.timer += dt;
     const enemy = this.target;
     if (enemy && !enemy.alive) return this.finishZip(p, C, true);
-    const [tx, ty] = enemy ? center(enemy) : [this.anchor.x, this.anchor.y];
-    [this.hx, this.hy] = [tx, ty];
+    [this.hx, this.hy] = enemy ? center(enemy) : [this.anchor.x, this.anchor.y];
+    // 적에게 날아갈 때는 몸 중심이 아니라 '내 발이 적의 발보다 살짝 위'를 노린다.
+    // 같은 높이의 적에게 수평으로 날아가다 조금씩 내려가 절벽 모서리에 걸리는 것을 막는다
+    const tx = this.hx;
+    const ty = enemy ? Math.min(this.hy, enemy.y + enemy.h - p.h / 2 - C.feetClearance) : this.hy;
 
     const [cx, cy] = center(p);
     const ddx = tx - cx, ddy = ty - cy;
@@ -224,8 +281,29 @@ export class Chain {
     p.vx = this.zdx * (step / dt);
     p.vy = this.zdy * (step / dt);
     moveAndCollide(p, world, dt);
+    if (p.hitWall) this.ledgeAssist(p, world, dt, before, C);
     const moved = Math.hypot(p.x - before[0], p.y - before[1]);
     if (moved < step * 0.3 || this.timer >= C.zipMaxTime) this.finishZip(p, C, false);
+  }
+
+  // 모서리 보정: 옆으로 막혔을 때 조금 위로 올리면 지나갈 수 있으면 올려서 다시 움직인다 (낭떠러지 건너편 턱 등)
+  ledgeAssist(p, world, dt, before, C) {
+    const [vx, vy] = [p.vx, p.vy];
+    for (let lift = 2; lift <= C.ledgeAssist; lift += 2) {
+      p.x = before[0];
+      p.y = before[1] - lift;
+      if (overlapsSolid(p, world)) continue;
+      p.vx = this.zdx * Math.hypot(vx, vy);
+      p.vy = Math.min(0, this.zdy * Math.hypot(vx, vy)); // 올라선 뒤 다시 파고들지 않게 아래로는 움직이지 않음
+      moveAndCollide(p, world, dt);
+      if (!p.hitWall) return;
+    }
+    // 올려도 안 되면 원래 결과로 (막힘)
+    p.x = before[0];
+    p.y = before[1];
+    p.vx = vx;
+    p.vy = vy;
+    moveAndCollide(p, world, dt);
   }
 
   finishZip(p, C, keepMomentum) {
@@ -240,6 +318,7 @@ export class Chain {
   // 걸린 적을 내 쪽으로 끌어오기. 적 이동은 enemy.update 가 enemy.pull 을 보고 처리한다
   updatePull(dt, p, C) {
     this.timer += dt;
+    if (p.holdingUp) this.launchWanted = true;
     const enemy = this.target;
     if (!enemy || !enemy.alive) return this.cancel();
     const [cx, cy] = center(p);
@@ -252,7 +331,15 @@ export class Chain {
     if (Math.max(gapX, gapY) <= C.pullStopGap) {
       enemy.pull = null;
       const hitId = `${this.key}-${this.count}`;
-      if (C.onPullArrive === 'throw') {
+      const throwing = C.onPullArrive === 'throw' || C.onPullArrive === 'storm';
+      if (throwing && (this.launchWanted || p.holdingUp)) {
+        // 회전 투척 + ↑: 위로 띄운다 (공중 상태 → 내리찍기로 이어 칠 수 있음)
+        enemy.takeHit(C.launchSelfDamage, p.facing, 0, 0, hitId);
+        enemy.launch(C.launchHeight, C.launchHangTime, C.launchGravity);
+        this.hitstop = C.throwHitstop;
+      } else if (C.onPullArrive === 'storm') {
+        return this.startSpin(p, enemy, C);
+      } else if (throwing) {
         // 회전 투척: 끌어온 적을 휘둘러 바라보는 쪽으로 던진다. 던진 적도, 날아가다 맞은 적도 피해
         const dir = p.facing;
         enemy.takeHit(C.throwSelfDamage, dir, 0, 0, hitId);
@@ -271,11 +358,111 @@ export class Chain {
     if (this.timer >= C.pullMaxTime) this.cancel();
   }
 
+  // 철퇴 폭풍: 끌어온 적을 사슬 끝에 매달고 플레이어 주위를 stormTurns 바퀴 돈다
+  startSpin(p, enemy, C) {
+    this.phase = 'spin';
+    this.target = enemy;
+    enemy.held = true;
+    enemy.pull = null;
+    const [cx, cy] = center(p);
+    const [ex, ey] = center(enemy);
+    this.spinStart = Math.atan2((ey - cy) / C.stormScaleY, ex - cx);
+    this.spinAngle = this.spinStart;
+    this.timer = 0;
+    this.spinHit = new Set();
+  }
+
+  updateSpin(dt, p, enemies, C) {
+    const enemy = this.target;
+    if (!enemy.alive) return this.cancel();
+    p.vx = 0;
+    p.vy = 0;
+    p.dodgeTimer = Math.max(p.dodgeTimer, dt * 2);
+    this.timer += dt;
+    const k = Math.min(1, this.timer / C.stormTime);
+    // 바라보는 쪽 위로 먼저 넘어가도록 회전 방향을 정한다
+    const turn = -p.facing * Math.PI * 2 * C.stormTurns;
+    const prev = this.spinAngle;
+    const next = this.spinStart + turn * k;
+    const [cx, cy] = center(p);
+    const at = (a, r) => [cx + Math.cos(a) * r, cy + Math.sin(a) * r * C.stormScaleY];
+
+    // 지난 각도 → 이번 각도 사이를 훑으며, 매단 적(머리)과 사슬에 닿은 적에게 피해 (한 번씩)
+    const n = Math.max(1, Math.ceil(Math.abs(next - prev) / 0.12));
+    const pad = C.stormHitPad;
+    for (const e of enemies) {
+      if (e === enemy || !e.alive || this.spinHit.has(e)) continue;
+      const box = { x: e.x - pad, y: e.y - pad, w: e.w + pad * 2, h: e.h + pad * 2 };
+      let hit = false;
+      for (let i = 0; i <= n && !hit; i++) {
+        const a = prev + ((next - prev) * i) / n;
+        const [hx, hy] = at(a, C.stormRadius);
+        hit = overlaps(box, { x: hx - enemy.w / 2, y: hy - enemy.h / 2, w: enemy.w, h: enemy.h });
+        for (let r = 12; r < C.stormRadius && !hit; r += 8) {
+          const [px, py] = at(a, r);
+          hit = px >= box.x && px <= box.x + box.w && py >= box.y && py <= box.y + box.h;
+        }
+      }
+      if (!hit) continue;
+      this.spinHit.add(e);
+      const dir = Math.sign(e.x + e.w / 2 - cx) || p.facing;
+      if (e.takeHit(C.stormDamage, dir, C.stormKnockbackX, C.stormKnockbackY, `${this.key}-${this.count}-storm`)) this.hitstop = C.stormHitstop;
+    }
+
+    this.spinAngle = next;
+    [this.hx, this.hy] = at(next, C.stormRadius);
+    enemy.x = this.hx - enemy.w / 2;
+    enemy.y = this.hy - enemy.h / 2;
+    if (k < 1) return;
+
+    // 다 돌면 앞으로 던진다 (공중 상태)
+    enemy.held = false;
+    const hitId = `${this.key}-${this.count}`;
+    enemy.takeHit(C.stormSelfDamage, p.facing, 0, 0, `${hitId}-self`);
+    enemy.throwAway(p.facing, C, hitId);
+    this.hitstop = C.throwHitstop;
+    this.phase = null;
+    this.target = null;
+  }
+
+  // 내리찍기: 감은 적을 땅까지 꽂는다. 닿으면 그 적과 주변 적에게 피해 + 충격파
+  updateSlamDown(dt, p, enemies, C) {
+    const enemy = this.target;
+    if (!enemy.alive) return this.cancel();
+    this.timer += dt;
+    [this.hx, this.hy] = center(enemy);
+    if (!enemy.onGround && this.timer < C.slamMaxTime) return;
+
+    enemy.pull = null;
+    const ix = enemy.x + enemy.w / 2;
+    const groundY = enemy.y + enemy.h;
+    const hitId = `${this.key}-${this.count}-slam`;
+    enemy.takeHit(C.slamDamage, p.facing, 0, C.slamKnockbackY * 0.3, hitId);
+    const area = { x: ix - C.slamRadiusX, y: groundY - C.slamHeight, w: C.slamRadiusX * 2, h: C.slamHeight + 8 };
+    for (const e of enemies) {
+      if (e === enemy || !e.alive || !overlaps(area, e)) continue;
+      const dir = Math.sign(e.x + e.w / 2 - ix) || p.facing;
+      e.takeHit(C.slamAoEDamage, dir, C.slamKnockbackX, C.slamKnockbackY, `${hitId}-aoe`);
+    }
+    this.hitstop = C.slamHitstop;
+    this.impact = { x: ix, y: groundY, r: C.slamRadiusX, shake: C.slamShake, shakeTime: C.slamShakeTime, waveTime: C.slamWaveTime };
+    this.phase = null;
+    this.target = null;
+  }
+
   draw(ctx, cam, p) {
     if (!this.active) return;
     const C = p.stats[this.key];
     const [cx, cy] = center(p);
     const x0 = cx - cam.x, y0 = cy - cam.y;
+    if (this.phase === 'spin') {
+      // 철퇴 폭풍 궤적
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.ellipse(x0, y0, C.stormRadius, C.stormRadius * C.stormScaleY, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
     const latching = this.phase === 'latch';
     // 멈칫하는 동안 사슬 끝이 떨리고, 사슬이 굵고 밝아진다
     const shake = latching ? C.latchShake * (Math.random() * 2 - 1) : 0;

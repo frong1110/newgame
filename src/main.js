@@ -171,14 +171,25 @@ function update(dt) {
   Input.endFrame();
 }
 
-// 내리꽂기 착지: 착지 지점 좌우 radiusX, 위로 height 안의 적에게 큰 피해
+// 내리꽂기: 몸쪽 ~ 분동이 떨어진 지점(left~right), 위로 height 안의 적에게 큰 피해
+function addImpactEffects(x, y, r, shakeMag, shakeTime, waveTime) {
+  shake.time = shake.total = shakeTime;
+  shake.mag = shakeMag;
+  waves.push({ x, y, r, t: 0, total: waveTime });
+}
+
 function resolveSlam() {
+  // 사슬 무기 내리찍기 충격 (피해는 chain.js 에서 이미 처리)
+  const ci = player.pullChain.takeImpact();
+  if (ci) addImpactEffects(ci.x, ci.y, ci.r, ci.shake, ci.shakeTime, ci.waveTime);
+
   const s = player.takeSlamImpact();
   if (!s) return;
-  const area = { x: s.x - s.radiusX, y: s.y - s.height, w: s.radiusX * 2, h: s.height + 8 };
+  const area = { x: s.left, y: s.y - s.height, w: s.right - s.left, h: s.height + 8 };
   for (const e of enemies) {
     if (!e.alive || !overlaps(area, e)) continue;
-    const dir = Math.sign(e.x + e.w / 2 - s.x) || player.facing;
+    // 밀어내는 방향은 플레이어 기준 (분동이 떨어진 곳 기준이면 플레이어 쪽으로 밀릴 수 있음)
+    const dir = Math.sign(e.x + e.w / 2 - (player.x + player.w / 2)) || player.facing;
     if (!e.takeHit(s.damage, dir, s.knockbackX, s.knockbackY, s.hitId)) continue;
     // 사슬 무기면 휘두르기 끝부분 거리로 밀어낸다 (바로 X 로 끝부분 적중을 노릴 수 있게)
     if (s.pushToTip && player.usesChainWeapon) {
@@ -189,7 +200,8 @@ function resolveSlam() {
   hitstopTimer = Math.max(hitstopTimer, s.hitstop);
   shake.time = shake.total = s.shakeTime;
   shake.mag = s.shake;
-  waves.push({ x: s.x, y: s.y, r: s.radiusX, t: 0, total: s.waveTime });
+  // 충격파는 맞는 범위 전체에 퍼지게 (몸쪽 ~ 분동)
+  waves.push({ x: (s.left + s.right) / 2, y: s.y, r: (s.right - s.left) / 2, t: 0, total: s.waveTime });
 }
 
 function resolveCombat() {
@@ -211,11 +223,11 @@ function resolveCombat() {
         if (hit.stun > 0) e.stunTimer = Math.max(e.stunTimer, hit.stun); // 분동 강타
       }
     }
-    // 던져진 적 → 다른 적 (회전 투척)
-    if (e.thrown) {
+    // 던져져 날아가는 적(공중 상태) → 다른 적 (회전 투척). 띄워진 적은 피해 없음
+    if (e.flight && e.flight.damage > 0) {
       for (const other of enemies) {
         if (other === e || !other.alive || !overlaps(e, other)) continue;
-        const T = e.thrown;
+        const T = e.flight;
         if (other.takeHit(T.damage, Math.sign(e.vx) || 1, T.knockbackX, T.knockbackY, T.hitId)) hitstopTimer = T.hitstop;
       }
     }
