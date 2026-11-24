@@ -6,8 +6,10 @@ import { Enemy } from './enemy.js';
 import { overlaps } from './physics.js';
 import { SkillTree } from './skills.js';
 import { drawChoicePanel, drawTreePanel, hitTestTree } from './skillUI.js';
+import { setupTouchControls, setTouchPanelOpen } from './touch.js';
 
 const canvas = document.getElementById('game');
+const isTouch = setupTouchControls(); // 터치 기기(또는 ?touch=1)에서 화면 버튼 표시
 const ctx = canvas.getContext('2d');
 
 const world = new World(LEVELS.level1);
@@ -241,13 +243,16 @@ function render() {
   ctx.fillText(`room: ${room}   enemies: ${enemies.filter((e) => e.alive).length}/${enemies.length}`, 12, 94);
   const owned = [...skillTree.owned].map((id) => skillTree.byId[id].name);
   ctx.textAlign = 'right';
-  ctx.fillText('K: 스킬 트리', canvas.width - 12, 22);
-  owned.forEach((name, i) => ctx.fillText(`· ${name}`, canvas.width - 12, 44 + i * 18));
+  // 터치 모드에서는 오른쪽 위에 버튼이 있으므로 안내 문구를 빼고 목록을 아래로 내린다
+  if (!isTouch) ctx.fillText('K: 스킬 트리', canvas.width - 12, 22);
+  const listTop = isTouch ? 90 : 44;
+  owned.forEach((name, i) => ctx.fillText(`· ${name}`, canvas.width - 12, listTop + i * 18));
   ctx.textAlign = 'left';
   ctx.fillText(`${player.usesChain ? 'chain' : 'dash'}: ${player.isDashing ? 'GO' : player.chain.active ? player.chain.phase : dashReady ? 'ready' : '...'}${player.dodgeTimer > 0 ? ' (무적)' : ''}`, 12, 76);
 }
 
 function renderOverlay() {
+  if (isTouch) setTouchPanelOpen(mode !== 'play');
   if (mode === 'choice') drawChoicePanel(ctx, choices, selected, skillTree, room);
   else if (mode === 'tree') drawTreePanel(ctx, skillTree, skillTree.orderedIds()[treeCursor]);
 }

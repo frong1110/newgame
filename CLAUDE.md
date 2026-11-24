@@ -19,7 +19,8 @@
 ├── package.json
 ├── src/
 │   ├── main.js              # 고정 시간 간격 게임 루프, 카메라, 렌더 호출
-│   ├── input.js             # 키보드 입력 (down / pressed / released)
+│   ├── input.js             # 입력 (키보드 + 화면 버튼, down / pressed / released)
+│   ├── touch.js             # 모바일 화면 버튼 (방향 패드·행동 버튼 → 키 코드로 Input 에 전달)
 │   ├── player.js            # 플레이어 이동·점프·공격(사슬 휘두르기 / 검)·특수(당기기)·피격·그리기
 │   ├── enemy.js             # 적 (테스트용 더미: 순찰, 피격, 속박, 던져짐, 사망)
 │   ├── physics.js           # 타일 충돌(moveAndCollide), 사각형 겹침 판정
@@ -55,6 +56,7 @@ npm run preview    # 빌드 결과 미리보기
 - 스킬은 `src/data/skills.json` 에 추가한다. 효과는 `{ "stat": "dash.speed", "op": "mul"|"add"|"set", "value": … }` 로 `player.json` 의 수치를 바꾸는 방식이다. 플레이어 코드는 `PLAYER` 대신 `this.stats`(스킬 적용된 수치)를 읽어야 한다. 새 동작이 필요한 스킬은 `player.json` 에 기본값을 가진 수치를 추가하고 코드에서 그 값을 보고 동작하게 한다 (예: `dash.directions` 2→8, `dash.mode` 'dash'→'chain', `chain.onEnemy` 'zip'→'pull').
 - 조작: ←/→ 이동, Space 점프(2단), X 공격(사슬 휘두르기, 꾹 누르면 연속), C 특수(사슬: 당기기, ↑↓ 로 조준), Shift 대시, K 스킬 트리(테스트용: 클릭 또는 ↑↓+Enter 로 배우기/해제, Q 로 주 무기 사슬↔검), R 처음부터(스킬 초기화 — 플레이어 사망이 생기기 전까지 임시).
 - 스킬 트리 규칙(설계안): 무기마다 세 갈래 × 3단계, 앞 단계를 가져야 다음 단계. 설계만 있고 동작이 없는 스킬은 `skills.json` 에 `"implemented": false` 로 넣는다 (트리에 '준비 중'으로 보이고 배울 수 없음).
+- 모바일: 터치 기기에서는 화면 버튼이 자동으로 나온다 (PC 에서는 주소에 `?touch=1`). 버튼은 키보드와 같은 키 코드를 `Input.pressVirtual/releaseVirtual` 로 넣으므로 새 조작을 추가하면 `touch.js` 에 버튼도 추가한다. 가로 화면 전용(세로면 안내 문구).
 - 개발 서버에서는 `window.__game` 으로 player/enemies/world 상태를 볼 수 있다 (배포 빌드에는 없음).
 
 ## 현재 상태
