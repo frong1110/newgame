@@ -214,6 +214,7 @@ export class Chain {
       p.vy = -C.attachBounce; // 적에게 붙은 뒤 살짝 떠서 이어서 공격하기 좋게
       p.airDashesUsed = 0;
       this.phase = null;
+      p.onChainArrive?.(this);
       return;
     }
     if (!enemy && dist <= C.arriveDistance) return this.finishZip(p, C, true);
@@ -233,6 +234,7 @@ export class Chain {
     if (this.zdx) p.facing = Math.sign(this.zdx);
     this.phase = null;
     this.target = null;
+    p.onChainArrive?.(this);
   }
 
   // 걸린 적을 내 쪽으로 끌어오기. 적 이동은 enemy.update 가 enemy.pull 을 보고 처리한다

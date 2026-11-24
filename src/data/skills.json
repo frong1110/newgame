@@ -186,7 +186,7 @@
         {
           "id": "dash_chain",
           "name": "사슬",
-          "description": "대시 대신 사슬을 걸어 두고, 다시 누르면 그곳으로 날아감 (적이면 붙으며 피해)",
+          "description": "대시 대신 사슬을 던져, 걸린 곳으로 바로 날아감 (적이면 붙으며 피해)",
           "requires": [
             "dash_diagonal"
           ],
@@ -203,9 +203,9 @@
           ]
         },
         {
-          "id": "dash_pull",
-          "name": "끌어오기",
-          "description": "2번째 시전 때 적에게 날아가는 대신 적을 끌어오며 피해",
+          "id": "dash_slam",
+          "name": "내리꽂기",
+          "description": "사슬로 이동한 직후 공격하면 땅에 내리꽂으며 주변에 큰 피해",
           "requires": [
             "dash_chain"
           ],
@@ -215,9 +215,9 @@
           ],
           "effects": [
             {
-              "stat": "chain.onEnemy",
+              "stat": "chain.slamAfterZip",
               "op": "set",
-              "value": "pull"
+              "value": true
             }
           ]
         }

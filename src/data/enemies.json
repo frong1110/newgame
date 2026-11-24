@@ -2,7 +2,7 @@
   "dummy": {
     "width": 28,
     "height": 28,
-    "maxHp": 3,
+    "maxHp": 10,
     "moveSpeed": 60,
     "gravity": 2200,
     "maxFallSpeed": 900,
