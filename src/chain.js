@@ -9,7 +9,7 @@
 //     → 지형: onTerrain 'zip' 이면 그 위치로 날아감, 'retract' 면 튕겨 나옴(걸리지 않음)
 //     → 적: onEnemy 'zip' 이면 적에게 날아가 붙으며 피해, 'pull' 이면 적을 끌어옴
 //            끌어온 뒤 onPullArrive 'stop' 이면 앞에 세움, 'throw' 면 휘둘러 앞으로 던짐(회전 투척),
-//            'storm' 이면 사슬 끝에 매달고 360도 돌린 뒤 던짐(철퇴 폭풍, spin).
+//            'storm' 이면 사슬 끝에 매달고 360도 돌린 뒤 살짝 위로 띄움(철퇴 폭풍, spin).
 //            'throw'/'storm' 에서 당기는 동안 ↑ 를 누르고 있었으면 대신 위로 띄움(launch)
 //   내리찍기 (startSlam): 공중 상태 적을 따라가 감고 → 멈칫 → 바닥에 꽂음(slamdown) → 충격파
 import { GAME } from './data/index.js';
@@ -358,7 +358,7 @@ export class Chain {
     if (this.timer >= C.pullMaxTime) this.cancel();
   }
 
-  // 철퇴 폭풍: 끌어온 적을 사슬 끝에 매달고 플레이어 주위를 stormTurns 바퀴 돈다
+  // 철퇴 폭풍: 끌어온 적을 사슬 끝에 매달고 플레이어 주위를 stormTurns 바퀴 돈 뒤 살짝 띄운다
   startSpin(p, enemy, C) {
     this.phase = 'spin';
     this.target = enemy;
@@ -415,11 +415,11 @@ export class Chain {
     enemy.y = this.hy - enemy.h / 2;
     if (k < 1) return;
 
-    // 다 돌면 앞으로 던진다 (공중 상태)
+    // 다 돌면 매단 적을 살짝 위로 띄운다 (공중 상태 → 바로 C 로 내리찍기를 이어갈 수 있음)
     enemy.held = false;
     const hitId = `${this.key}-${this.count}`;
     enemy.takeHit(C.stormSelfDamage, p.facing, 0, 0, `${hitId}-self`);
-    enemy.throwAway(p.facing, C, hitId);
+    enemy.launch(C.stormLaunchHeight, C.stormLaunchHangTime, C.launchGravity, p.facing * C.stormLaunchSpeedX);
     this.hitstop = C.throwHitstop;
     this.phase = null;
     this.target = null;
