@@ -277,7 +277,7 @@
     "stormHitPad": 8,
     "stormDamage": 2,
     "stormSelfDamage": 1,
-    "stormLaunchHeight": 70,
+    "stormLaunchHeight": 120,
     "stormLaunchHangTime": 0.5,
     "stormLaunchSpeedX": 90,
     "stormKnockbackX": 320,

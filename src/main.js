@@ -8,6 +8,8 @@ import { SkillTree } from './skills.js';
 import { drawChoicePanel, drawTreePanel, hitTestTree } from './skillUI.js';
 import { setupTouchControls, setTouchPanelOpen } from './touch.js';
 
+const VERSION = __APP_VERSION__; // package.json 의 version (vite.config.js 에서 넣어 줌)
+document.title = `newgame v${VERSION}`;
 const canvas = document.getElementById('game');
 const isTouch = setupTouchControls(); // 터치 기기(또는 ?touch=1)에서 화면 버튼 표시
 const ctx = canvas.getContext('2d');
@@ -307,6 +309,15 @@ function render() {
   ctx.fillText(`${player.usesChain ? 'chain' : 'dash'}: ${player.isDashing ? 'GO' : player.chain.active ? player.chain.phase : dashReady ? 'ready' : '...'}${player.dodgeTimer > 0 ? ' (무적)' : ''}`, 12, 76);
 }
 
+// 버전 표시: 화면 위쪽 가운데 (모바일 버튼과 겹치지 않는 자리)
+function drawVersion() {
+  ctx.font = '12px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(255,255,255,0.45)';
+  ctx.fillText(`v${VERSION}`, canvas.width / 2, 18);
+  ctx.textAlign = 'left';
+}
+
 function renderOverlay() {
   if (isTouch) setTouchPanelOpen(mode !== 'play');
   if (mode === 'choice') drawChoicePanel(ctx, choices, selected, skillTree, room);
@@ -321,6 +332,7 @@ function frame(now) {
     acc -= STEP;
   }
   render();
+  drawVersion();
   renderOverlay();
   requestAnimationFrame(frame);
 }
