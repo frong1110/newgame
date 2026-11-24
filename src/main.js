@@ -171,11 +171,11 @@ function update(dt) {
   Input.endFrame();
 }
 
-// 내리꽂기: 분동이 떨어진 지점 좌우 radiusX, 위로 height 안의 적에게 큰 피해
+// 내리꽂기: 몸쪽 ~ 분동이 떨어진 지점(left~right), 위로 height 안의 적에게 큰 피해
 function resolveSlam() {
   const s = player.takeSlamImpact();
   if (!s) return;
-  const area = { x: s.x - s.radiusX, y: s.y - s.height, w: s.radiusX * 2, h: s.height + 8 };
+  const area = { x: s.left, y: s.y - s.height, w: s.right - s.left, h: s.height + 8 };
   for (const e of enemies) {
     if (!e.alive || !overlaps(area, e)) continue;
     // 밀어내는 방향은 플레이어 기준 (분동이 떨어진 곳 기준이면 플레이어 쪽으로 밀릴 수 있음)
@@ -190,7 +190,8 @@ function resolveSlam() {
   hitstopTimer = Math.max(hitstopTimer, s.hitstop);
   shake.time = shake.total = s.shakeTime;
   shake.mag = s.shake;
-  waves.push({ x: s.x, y: s.y, r: s.radiusX, t: 0, total: s.waveTime });
+  // 충격파는 맞는 범위 전체에 퍼지게 (몸쪽 ~ 분동)
+  waves.push({ x: (s.left + s.right) / 2, y: s.y, r: (s.right - s.left) / 2, t: 0, total: s.waveTime });
 }
 
 function resolveCombat() {

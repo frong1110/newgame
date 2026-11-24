@@ -328,7 +328,18 @@ export class Player {
     const S = this.stats.slam;
     this.slamWeight = [this.slamWeight[0], groundY - S.weightSize / 2];
     this.slamImpactPoint = [...this.slamWeight];
-    this.slamImpact = { x: this.slamWeight[0], y: groundY, hitId: `slam-${this.slamCount}`, ...S };
+    // 맞는 범위: 몸쪽(플레이어 중심 + areaNear) ~ 분동이 떨어진 곳 + areaFar
+    const cx = this.x + this.w / 2;
+    const near = cx + this.facing * S.areaNear;
+    const far = this.slamWeight[0] + this.facing * S.areaFar;
+    this.slamImpact = {
+      ...S,
+      x: this.slamWeight[0],
+      y: groundY,
+      left: Math.min(near, far),
+      right: Math.max(near, far),
+      hitId: `slam-${this.slamCount}`,
+    };
     this.nextSlamState('recover');
   }
 

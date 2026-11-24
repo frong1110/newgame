@@ -1,7 +1,7 @@
 # Graph Report - newgame  (2026-11-24)
 
 ## Corpus Check
-- 20 files · ~14,325 words
+- 20 files · ~14,393 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 1 file(s) not represented in the graph (top: (none) 1)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `444ccce5`
+- Built from commit: `d632584d`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
