@@ -12,7 +12,7 @@
 | 파일 분리·합치기, 공용 모듈(`physics.js`, `input.js`, `enemy.js`, `chain.js`) 수정, 프레임 진행 순서 변경 | 회귀 재생 (바꾸기 **전·후**) + `npm run build` | graphify (요청 때만) |
 | 큰 구조 변경이 끝난 뒤 | 위 + 필요하면 graphify | |
 
-graphify 는 사용자가 요청하거나 큰 구조 변경 뒤에만 다시 만든다.
+graphify 결과물(`graphify-out/`)은 저장소에 올리지 않는다(.gitignore). 사용자가 요청할 때 로컬에서만 만든다.
 
 ## 2. 준비
 
