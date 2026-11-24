@@ -7,6 +7,7 @@ import { SKILLS } from './data/index.js';
 export class SkillTree {
   constructor(baseStats) {
     this.baseStats = baseStats;
+    this.weapon = baseStats.weapon; // 주 무기 (판 시작 때 정함. 테스트용으로 트리 화면에서 바꿀 수 있음)
     this.trees = SKILLS.trees;
     this.byId = {};
     for (const [treeId, tree] of Object.entries(this.trees)) {
@@ -24,10 +25,20 @@ export class SkillTree {
     return this.owned.has(id);
   }
 
-  // 선행 스킬을 모두 가졌고 아직 안 배운 스킬
+  // 설계만 있고 아직 동작이 없는 스킬 (트리에 '준비 중'으로 보임)
+  isImplemented(id) {
+    return this.byId[id].implemented !== false;
+  }
+
+  // 선행 스킬을 모두 가졌고 아직 안 배운, 구현된 스킬
   isLearnable(id) {
     const s = this.byId[id];
-    return !this.owned.has(id) && s.requires.every((r) => this.owned.has(r));
+    return this.isImplemented(id) && !this.owned.has(id) && s.requires.every((r) => this.owned.has(r));
+  }
+
+  setWeapon(weapon) {
+    this.weapon = weapon;
+    this.stats = this.computeStats();
   }
 
   learnable() {
@@ -43,6 +54,7 @@ export class SkillTree {
 
   // 테스트용: 선행 스킬까지 한 번에 배우기
   learnWithRequirements(id) {
+    if (!this.isImplemented(id)) return false;
     for (const r of this.byId[id].requires) if (!this.owned.has(r)) this.learnWithRequirements(r);
     return this.learn(id);
   }
@@ -81,6 +93,7 @@ export class SkillTree {
   // 기본 수치에 보유 스킬 효과를 순서대로 적용한 새 수치 객체
   computeStats() {
     const stats = structuredClone(this.baseStats);
+    stats.weapon = this.weapon;
     for (const id of this.owned) {
       for (const e of this.byId[id].effects) applyEffect(stats, e);
     }

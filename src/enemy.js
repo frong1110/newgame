@@ -26,6 +26,8 @@ export class Enemy {
     this.respawnTimer = 0;
     this.lastHitId = -1; // 같은 공격에 여러 번 맞지 않도록
     this.pull = null; // 사슬에 끌려오는 중이면 { x, y, speed } (목표 지점)
+    this.bindTimer = 0; // 사슬에 묶여(속박) 움직이지 못하는 남은 시간 (감기 스킬)
+    this.thrown = null; // 회전 투척으로 날아가는 중이면 { damage, knockbackX, knockbackY, hitstop, hitId }
   }
 
   update(dt, world) {
@@ -52,9 +54,26 @@ export class Enemy {
       moveAndCollide(this, world, dt);
       return;
     }
+    if (this.thrown) {
+      // 던져진 상태: 순찰 없이 포물선으로 날아가다 땅이나 벽에 닿으면 멈춤 (다른 적과의 충돌은 main.js)
+      this.vy = Math.min(this.vy + S.thrownGravity * dt, S.maxFallSpeed);
+      moveAndCollide(this, world, dt);
+      if (this.onGround || this.hitWall) {
+        this.thrown = null;
+        this.vx = 0;
+        this.stunTimer = Math.max(this.stunTimer, S.stunTime);
+      }
+      if (this.y > world.pixelHeight + GAME.fallRespawnMargin) this.die();
+      return;
+    }
+    if (this.bindTimer > 0) {
+      // 속박: 제자리에 묶임 (몸통 피해도 없음)
+      this.bindTimer -= dt;
+      this.stunTimer = Math.max(this.stunTimer, dt * 2);
+    }
     if (this.stunTimer > 0) {
       this.stunTimer -= dt;
-      this.vx = approach(this.vx, 0, S.knockbackDecel * dt);
+      this.vx = this.bindTimer > 0 ? 0 : approach(this.vx, 0, S.knockbackDecel * dt);
     } else {
       this.vx = this.dir * S.moveSpeed;
     }
@@ -74,6 +93,25 @@ export class Enemy {
     const T = GAME.tileSize;
     const footX = this.dir > 0 ? this.x + this.w + 1 : this.x - 1;
     return world.isSolid(Math.floor(footX / T), Math.floor((this.y + this.h + 1) / T));
+  }
+
+  // 회전 투척: dir 쪽으로 포물선을 그리며 날아간다. C = 던진 사슬의 수치
+  throwAway(dir, C, hitId) {
+    if (!this.alive) return;
+    this.bindTimer = 0;
+    this.vx = dir * C.throwSpeedX;
+    this.vy = -C.throwSpeedY;
+    this.thrown = {
+      damage: C.throwDamage,
+      knockbackX: C.throwKnockbackX,
+      knockbackY: C.throwKnockbackY,
+      hitstop: C.throwHitstop,
+      hitId: `${hitId}-thrown`,
+    };
+  }
+
+  bind(time) {
+    this.bindTimer = Math.max(this.bindTimer, time);
   }
 
   takeHit(damage, fromDir, knockX, knockY, hitId) {
@@ -105,6 +143,18 @@ export class Enemy {
     const eyeX = px + this.w / 2 + this.dir * 5;
     ctx.fillRect(eyeX - 5, py + 8, 4, 5);
     ctx.fillRect(eyeX + 2, py + 8, 4, 5);
+    // 속박: 몸에 감긴 사슬
+    if (this.bindTimer > 0) {
+      ctx.strokeStyle = '#cfd8e3';
+      ctx.lineWidth = 2;
+      for (let i = 1; i <= 3; i++) {
+        const yy = py + (this.h * i) / 4;
+        ctx.beginPath();
+        ctx.moveTo(px - 2, yy - 3);
+        ctx.lineTo(px + this.w + 2, yy + 3);
+        ctx.stroke();
+      }
+    }
     // 체력 칸
     const pip = 6, gap = 2;
     const total = this.stats.maxHp * (pip + gap) - gap;

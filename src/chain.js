@@ -1,19 +1,24 @@
-// 사슬 (대시 트리 2·3번째 스킬). 대시 키를 두 번 쓴다.
-//   1번째: 던지기(throw) → 지형/적에 걸리면 걸어 둔 상태(hooked). 플레이어는 자유롭게 움직임
-//          (시간이 지나거나, 너무 멀어지거나, 적이 죽으면 풀림)
-//   2번째: 발동 → 잠깐 멈칫(latch: 사슬이 팽팽해지며 떨림, 플레이어 정지) → 아래 동작
-//                 → 지형에 박히면: 그 위치로 빠르게 날아감(zip)
-//                 → 적에게 닿으면: onEnemy 가 'zip' 이면 적에게 날아가 붙으며 피해,
-//                                   'pull' 이면 적을 내 쪽으로 끌어오며 피해
-//                 → 사거리 끝까지 아무것도 없으면: 되감기(retract)
-// 수치는 player.json 의 chain 에 있다.
+// 던지는 사슬. 두 곳에서 쓴다 (수치는 player.json):
+//   - 대시 사슬 (대시 트리 스킬, stats.chain): 대시 키를 두 번 쓴다 (twoPress)
+//   - 당기기 (사슬 무기 특수 버튼, stats.pullChain): 한 번에 적을 끌어온다
+// 흐름:
+//   던지기(throw) → 사거리 끝까지 아무것도 없으면 되감기(retract)
+//     → 걸림: twoPress 면 걸어 둔 상태(hooked: 플레이어는 자유롭게 움직임. 시간이 지나거나,
+//             너무 멀어지거나, 적이 죽으면 풀림)에서 다시 누를 때, 아니면 바로 아래로
+//     → 잠깐 멈칫(latch: 사슬이 팽팽해지며 떨림, 플레이어 정지)
+//     → 지형: onTerrain 'zip' 이면 그 위치로 날아감, 'retract' 면 튕겨 나옴(걸리지 않음)
+//     → 적: onEnemy 'zip' 이면 적에게 날아가 붙으며 피해, 'pull' 이면 적을 끌어옴
+//            끌어온 뒤 onPullArrive 'stop' 이면 앞에 세움, 'throw' 면 휘둘러 앞으로 던짐(회전 투척)
 import { GAME } from './data/index.js';
 import { moveAndCollide, overlaps } from './physics.js';
 
 const SUBSTEP = 4; // 사슬 끝이 한 번에 움직이는 최대 거리(px). 얇은 지형을 뚫지 않게
 
 export class Chain {
-  constructor() {
+  // statsKey: 쓸 수치 (stats.chain / stats.pullChain), cooldownProp: 재사용 대기시간을 적을 플레이어 속성
+  constructor(statsKey = 'chain', cooldownProp = 'dashCooldownTimer') {
+    this.key = statsKey;
+    this.cooldownProp = cooldownProp;
     this.phase = null; // null | 'throw' | 'hooked' | 'latch' | 'zip' | 'pull' | 'retract'
     this.count = 0;
     this.hitstop = 0;
@@ -37,7 +42,7 @@ export class Chain {
   }
 
   start(p, dx, dy) {
-    const C = p.stats.chain;
+    const C = p.stats[this.key];
     this.phase = 'throw';
     this.dx = dx;
     this.dy = dy;
@@ -47,7 +52,7 @@ export class Chain {
     this.anchor = null; // 박힌 지형 위치
     this.timer = 0;
     this.count++;
-    p.dashCooldownTimer = C.cooldown;
+    p[this.cooldownProp] = C.cooldown;
   }
 
   cancel() {
@@ -64,7 +69,7 @@ export class Chain {
   }
 
   update(dt, p, world, enemies) {
-    const C = p.stats.chain;
+    const C = p.stats[this.key];
     if (this.phase === 'throw') this.updateThrow(dt, p, world, enemies, C);
     else if (this.phase === 'retract') this.updateRetract(dt, p, C);
     else if (this.phase === 'hooked') this.updateHooked(dt, p, C);
@@ -91,13 +96,17 @@ export class Chain {
       if (enemy) {
         this.target = enemy;
         enemy.flashTimer = enemy.stats.hitFlashTime;
-        return this.hook(C);
+        return C.twoPress ? this.hook(C) : this.begin(p, C);
       }
       const T = GAME.tileSize;
       if (world.isSolid(Math.floor(this.hx / T), Math.floor(this.hy / T))) {
+        if (C.onTerrain === 'retract') {
+          this.phase = 'retract';
+          return;
+        }
         // 박힌 지점에서 살짝 물러난 곳을 목표로 (몸이 지형에 끼지 않게)
         this.anchor = { x: this.hx - this.dx * (p.w / 2 + 2), y: this.hy - this.dy * (p.h / 2 + 2) };
-        return this.hook(C);
+        return C.twoPress ? this.hook(C) : this.begin(p, C);
       }
     }
   }
@@ -119,10 +128,15 @@ export class Chain {
     if (this.timer <= 0 || tooFar) this.release();
   }
 
-  // 두 번째 시전: 멈칫 후 날아가기 / 끌어오기
+  // 두 번째 시전 (twoPress)
   trigger(p) {
     if (!this.hooked) return false;
-    const C = p.stats.chain;
+    this.begin(p, p.stats[this.key]);
+    return true;
+  }
+
+  // 멈칫 후 날아가기 / 끌어오기 시작
+  begin(p, C) {
     const pulling = this.target && C.onEnemy === 'pull';
     if (this.target) {
       // 멈칫하는 동안 적을 그 자리에 붙잡아 둔다 (속도 0 으로 끌기)
@@ -130,7 +144,6 @@ export class Chain {
       this.target.pull = { x: ex, y: ey, speed: 0 };
     }
     this.latch(pulling ? 'pull' : 'zip', pulling ? C.pullLatchTime : C.latchTime);
-    return true;
   }
 
   // 사슬을 풀고 되감기
@@ -151,7 +164,7 @@ export class Chain {
   updateLatch(dt, p, C) {
     p.vx = 0;
     p.vy = 0;
-    p.dodgeTimer = Math.max(p.dodgeTimer, C.invincibleExtra);
+    if (this.next === 'zip') p.dodgeTimer = Math.max(p.dodgeTimer, C.invincibleExtra);
     if (this.target) {
       if (!this.target.alive) return this.cancel();
       [this.hx, this.hy] = center(this.target);
@@ -195,7 +208,7 @@ export class Chain {
     // 적에게 닿으면 붙으면서 피해
     if (enemy && overlaps(expand(p, C.attachDistance), enemy)) {
       const dir = Math.sign(ddx) || p.facing;
-      if (enemy.takeHit(C.damage, dir, C.knockbackX, C.knockbackY, `chain-${this.count}`)) this.hitstop = C.hitstop;
+      if (enemy.takeHit(C.damage, dir, C.knockbackX, C.knockbackY, `${this.key}-${this.count}`)) this.hitstop = C.hitstop;
       p.facing = dir;
       p.vx = 0;
       p.vy = -C.attachBounce; // 적에게 붙은 뒤 살짝 떠서 이어서 공격하기 좋게
@@ -236,10 +249,19 @@ export class Chain {
     const gapY = Math.abs(this.hy - cy) - (p.h + enemy.h) / 2;
     if (Math.max(gapX, gapY) <= C.pullStopGap) {
       enemy.pull = null;
-      const dir = Math.sign(this.hx - cx) || p.facing;
-      if (enemy.takeHit(C.pullDamage, dir, C.pullKnockbackX, C.pullKnockbackY, `chain-${this.count}`)) this.hitstop = C.hitstop;
-      enemy.stunTimer = Math.max(enemy.stunTimer, C.pullStun);
-      p.facing = dir;
+      const hitId = `${this.key}-${this.count}`;
+      if (C.onPullArrive === 'throw') {
+        // 회전 투척: 끌어온 적을 휘둘러 바라보는 쪽으로 던진다. 던진 적도, 날아가다 맞은 적도 피해
+        const dir = p.facing;
+        enemy.takeHit(C.throwSelfDamage, dir, 0, 0, hitId);
+        enemy.throwAway(dir, C, hitId);
+        this.hitstop = C.throwHitstop;
+      } else {
+        const dir = Math.sign(this.hx - cx) || p.facing;
+        if (enemy.takeHit(C.pullDamage, dir, C.pullKnockbackX, C.pullKnockbackY, hitId)) this.hitstop = C.hitstop;
+        enemy.stunTimer = Math.max(enemy.stunTimer, C.pullStun);
+        p.facing = dir;
+      }
       this.phase = null;
       this.target = null;
       return;
@@ -249,11 +271,12 @@ export class Chain {
 
   draw(ctx, cam, p) {
     if (!this.active) return;
+    const C = p.stats[this.key];
     const [cx, cy] = center(p);
     const x0 = cx - cam.x, y0 = cy - cam.y;
     const latching = this.phase === 'latch';
     // 멈칫하는 동안 사슬 끝이 떨리고, 사슬이 굵고 밝아진다
-    const shake = latching ? p.stats.chain.latchShake * (Math.random() * 2 - 1) : 0;
+    const shake = latching ? C.latchShake * (Math.random() * 2 - 1) : 0;
     const x1 = this.hx - cam.x + shake, y1 = this.hy - cam.y + shake;
     ctx.strokeStyle = latching ? '#ffffff' : '#9aa7b8';
     ctx.lineWidth = latching ? 3 : 2;
@@ -275,7 +298,7 @@ export class Chain {
     if (this.phase === 'hooked' && this.target) {
       // 걸어 둔 적 표시 (남은 시간만큼 줄어드는 테두리)
       const t = this.target;
-      const k = Math.max(0, this.timer / p.stats.chain.hookHoldTime);
+      const k = Math.max(0, this.timer / C.hookHoldTime);
       ctx.strokeStyle = 'rgba(255,204,77,0.9)';
       ctx.lineWidth = 2;
       ctx.beginPath();

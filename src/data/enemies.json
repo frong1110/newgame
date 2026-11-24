@@ -9,6 +9,7 @@
     "knockbackDecel": 1400,
     "stunTime": 0.35,
     "hitFlashTime": 0.1,
-    "respawnTime": 0
+    "respawnTime": 0,
+    "thrownGravity": 700
   }
 }

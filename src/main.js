@@ -16,6 +16,7 @@ const player = new Player(world.spawn.x, world.spawn.y, skillTree.stats);
 const enemies = world.enemySpawns.map((pos) => new Enemy('dummy', pos));
 const cam = { x: 0, y: 0, w: canvas.width, h: canvas.height };
 const puffs = []; // 2단 점프 이펙트
+const sparks = []; // 사슬 끝부분 적중 이펙트
 
 const STEP = GAME.fixedStep; // 고정 시간 간격 물리 (프레임레이트와 무관하게 같은 조작감)
 let acc = 0;
@@ -47,6 +48,13 @@ function updateTree() {
   if (Input.wasPressed('ArrowUp') || Input.wasPressed('ArrowLeft')) treeCursor = (treeCursor + ids.length - 1) % ids.length;
   if (['Enter', 'Space', 'KeyX'].some((k) => Input.wasPressed(k))) {
     skillTree.toggle(ids[treeCursor]);
+    applySkills();
+  }
+  if (Input.wasPressed('KeyQ')) {
+    // 테스트용 무기 바꾸기 (사슬 ↔ 검)
+    skillTree.setWeapon(skillTree.weapon === 'chain' ? 'sword' : 'chain');
+    player.attackTimer = 0;
+    player.pullChain.cancel();
     applySkills();
   }
   if (pendingClick) {
@@ -139,6 +147,8 @@ function update(dt) {
   }
   for (const p of puffs) p.t += dt;
   while (puffs.length && puffs[0].t > GAME.puffDuration) puffs.shift();
+  for (const s of sparks) s.t += dt;
+  while (sparks.length && sparks[0].t > GAME.sparkDuration) sparks.shift();
 
   // 구멍으로 떨어지면 리스폰
   if (player.y > world.pixelHeight + GAME.fallRespawnMargin) player.respawn(world.spawn.x, world.spawn.y);
@@ -155,16 +165,29 @@ function update(dt) {
 }
 
 function resolveCombat() {
-  const hitbox = player.getAttackHitbox();
-  // 사슬로 적을 맞힌 경우
-  const chainHitstop = player.chain.takeHitstop();
-  if (chainHitstop > 0) hitstopTimer = chainHitstop;
+  // 사슬(대시·당기기)로 적을 맞힌 경우
+  for (const c of [player.chain, player.pullChain]) {
+    const h = c.takeHitstop();
+    if (h > 0) hitstopTimer = Math.max(hitstopTimer, h);
+  }
   for (const e of enemies) {
     if (!e.alive) continue;
     // 플레이어 공격 → 적
-    if (hitbox && overlaps(hitbox, e)) {
-      if (e.takeHit(hitbox.damage, player.facing, hitbox.knockbackX, hitbox.knockbackY, player.attackId)) {
-        hitstopTimer = hitbox.hitstop;
+    const hit = player.attackHitTest(e);
+    if (hit && e.takeHit(hit.damage, player.facing, hit.knockbackX, hit.knockbackY, player.attackId)) {
+      hitstopTimer = hit.hitstop;
+      if (hit.tip) {
+        sparks.push({ x: hit.point[0], y: hit.point[1], t: 0 });
+        if (hit.bind > 0) e.bind(hit.bind); // 감기
+        if (hit.stun > 0) e.stunTimer = Math.max(e.stunTimer, hit.stun); // 분동 강타
+      }
+    }
+    // 던져진 적 → 다른 적 (회전 투척)
+    if (e.thrown) {
+      for (const other of enemies) {
+        if (other === e || !other.alive || !overlaps(e, other)) continue;
+        const T = e.thrown;
+        if (other.takeHit(T.damage, Math.sign(e.vx) || 1, T.knockbackX, T.knockbackY, T.hitId)) hitstopTimer = T.hitstop;
       }
     }
     // 적 몸통 → 플레이어 (경직 중인 적은 공격 판정 없음)
@@ -192,11 +215,26 @@ function render() {
   for (const e of enemies) e.draw(ctx, view);
   player.draw(ctx, view);
 
+  // 끝부분 적중: 노란 십자 불꽃
+  for (const sp of sparks) {
+    const k = sp.t / GAME.sparkDuration;
+    const r = 6 + 16 * k;
+    ctx.strokeStyle = `rgba(255,214,90,${1 - k})`;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    for (let i = 0; i < 4; i++) {
+      const a = (Math.PI / 4) * (2 * i + 1);
+      ctx.moveTo(sp.x - view.x + Math.cos(a) * r * 0.3, sp.y - view.y + Math.sin(a) * r * 0.3);
+      ctx.lineTo(sp.x - view.x + Math.cos(a) * r, sp.y - view.y + Math.sin(a) * r);
+    }
+    ctx.stroke();
+  }
+
   // 디버그 HUD
   ctx.fillStyle = 'rgba(255,255,255,0.8)';
   ctx.font = '14px monospace';
   ctx.fillText(`jumps: ${player.stats.maxJumps - player.jumpsUsed}/${player.stats.maxJumps}`, 12, 22);
-  ctx.fillText(`ground: ${player.onGround}`, 12, 40);
+  ctx.fillText(`weapon: ${player.usesChainWeapon ? '사슬' : '검'}${player.usesChainWeapon ? `   당기기(C): ${player.pullChain.active ? player.pullChain.phase : player.specialCooldownTimer > 0 ? '...' : 'ready'}` : ''}`, 12, 40);
   const comboLabel = player.attackTimer > 0 ? `${player.comboStep + 1}/${player.stats.attack.combo.length} ${player.step.name}` : '-';
   ctx.fillText(`combo: ${comboLabel}`, 12, 58);
   const dashReady = player.dashCooldownTimer <= 0 && (player.usesChain || player.onGround || player.airDashesUsed < player.stats.dash.maxAirDashes);
