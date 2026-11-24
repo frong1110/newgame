@@ -442,9 +442,12 @@ function renderOverlay() {
   else if (mode === 'tree') drawTreePanel(ctx, skillTree, skillTree.orderedIds()[treeCursor]);
 }
 
+let devPaused = false; // 개발 전용: 자동 테스트가 프레임을 직접 진행시킬 때 실시간 루프를 멈춘다
+
 function frame(now) {
   acc += Math.min(GAME.maxFrameTime, (now - last) / 1000);
   last = now;
+  if (devPaused) acc = 0;
   while (acc >= STEP) {
     update(STEP);
     acc -= STEP;
@@ -459,4 +462,13 @@ requestAnimationFrame(frame);
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
 // 개발 서버에서만 디버깅/자동 테스트용으로 상태를 노출 (배포 빌드에는 포함되지 않음)
-if (import.meta.env.DEV) window.__game = { playSfx, player, enemies, world, skillTree, get mode() { return mode; }, get room() { return room; }, get choices() { return choices; } };
+if (import.meta.env.DEV) {
+  window.__game = {
+    playSfx, player, enemies, world, skillTree, Input,
+    get mode() { return mode; }, get room() { return room; }, get choices() { return choices; },
+    get hitstop() { return hitstopTimer; },
+    // 자동 테스트용: 실시간 루프를 멈추고 고정 시간 간격으로 n 번 진행 (같은 입력이면 항상 같은 결과)
+    pause(on = true) { devPaused = on; },
+    tick(n = 1) { for (let i = 0; i < n; i++) update(STEP); },
+  };
+}
