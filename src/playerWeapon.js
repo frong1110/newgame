@@ -23,30 +23,6 @@ export class PlayerWeapon {
     return S.startup + S.active + S.recovery;
   }
 
-  // 채찍 폭풍: 스택에 따른 공격 속도·피해 배율 (스킬 없으면 1)
-  get stormOn() {
-    return this.usesChainWeapon && this.weapon.stormEnabled;
-  }
-
-  get attackSpeedMul() {
-    return this.stormOn ? 1 + this.whipStacks * this.weapon.stormSpeedPerStack : 1;
-  }
-
-  get stormDamageMul() {
-    return this.stormOn ? 1 + this.whipStacks * this.weapon.stormDamagePerStack : 1;
-  }
-
-  get whipMaxed() {
-    return this.stormOn && this.whipStacks >= this.weapon.stormMaxStacks;
-  }
-
-  // 사슬 적중 알림: 끝부분이면 스택 +1, 아니면 유지만 (타이머 갱신)
-  onChainHit(tip) {
-    if (!this.stormOn) return;
-    if (tip) this.whipStacks = Math.min(this.weapon.stormMaxStacks, this.whipStacks + 1);
-    if (this.whipStacks > 0) this.whipStackTimer = this.weapon.stormStackTime;
-  }
-
   // 공격 시작 후 경과 시간 (공격 중이 아니면 -1)
   get attackElapsed() {
     return this.attackTimer > 0 ? this.attackDuration - this.attackTimer : -1;
@@ -163,22 +139,27 @@ export class PlayerWeapon {
     if (!this.isAttackActive) return null;
     const S = this.step;
     if (this.usesChainWeapon && this.swingStorm) {
-      // 채찍 폭풍 최대: 플레이어 중심 원형 범위, 전부 끝부분 취급
+      // 채찍 폭풍 최대 스택 방출: 전방으로 넓게 퍼지는 아치(반타원). 가로 stormReachX, 세로는 좁은 stormReachY, 전부 끝부분 취급
       const W = this.weapon;
       const cx = this.x + this.w / 2, cy = this.y + this.h / 2;
-      const dx = Math.max(e.x - cx, 0, cx - (e.x + e.w)), dy = Math.max(e.y - cy, 0, cy - (e.y + e.h));
-      if (Math.hypot(dx, dy) > W.stormRadius) return null;
+      const f = this.facing;
+      const farEdge = f > 0 ? e.x + e.w - cx : cx - e.x; // 적의 앞쪽 끝까지 전방 거리 (음수면 완전히 뒤)
+      if (farEdge < -W.stormBackReach) return null;
+      const fwd = Math.max(0, f > 0 ? e.x - cx : cx - (e.x + e.w));
+      const dy = Math.max(e.y - cy, 0, cy - (e.y + e.h));
+      if ((fwd / W.stormReachX) ** 2 + (dy / W.stormReachY) ** 2 > 1) return null;
       const ex = e.x + e.w / 2;
       return {
-        damage: (S.damage + (S.tipDamage - S.damage) * W.tipBonusMultiplier) * W.tipDamageMultiplier * this.stormDamageMul,
+        damage: (S.damage + (S.tipDamage - S.damage) * W.tipBonusMultiplier) * this.chargeDamageMul,
         knockbackX: S.knockbackX,
         knockbackY: S.knockbackY,
         hitstop: S.tipHitstop,
         tip: true,
+        max: true,
         bind: W.tipBindTime,
-        stun: W.tipStun,
+        chain: W.tipChainTime,
         point: [ex, e.y + e.h / 2],
-        dir: Math.sign(ex - cx) || this.facing,
+        dir: f,
       };
     }
     if (!this.usesChainWeapon) {
@@ -218,14 +199,14 @@ export class PlayerWeapon {
     const minExt = this.swingTuned ? W.tuneMinTipExtension : W.minTipExtension;
     const tip = best >= tipFrom && reach >= L * minExt;
     return {
-      // 끝부분 피해 = 몸통 피해 + 추가 피해 × tipBonusMultiplier(분동 조율 리스크), 그다음 × tipDamageMultiplier(분동 강타). 소수 그대로
-      damage: (tip ? (S.damage + (S.tipDamage - S.damage) * W.tipBonusMultiplier) * W.tipDamageMultiplier : S.damage) * this.stormDamageMul,
+      // 끝부분 피해 = 몸통 피해 + 추가 피해 × tipBonusMultiplier(회전 차지 리스크), 방출 휘두르기는 × chargeDamageMul. 소수 그대로
+      damage: (tip ? S.damage + (S.tipDamage - S.damage) * W.tipBonusMultiplier : S.damage) * this.chargeDamageMul,
       knockbackX: S.knockbackX,
       knockbackY: S.knockbackY,
       hitstop: tip ? S.tipHitstop : S.hitstop,
       tip,
       bind: tip ? W.tipBindTime : 0,
-      stun: tip ? W.tipStun : 0,
+      chain: tip ? W.tipChainTime : 0,
       point,
     };
   }
@@ -233,8 +214,13 @@ export class PlayerWeapon {
   startAttack(step, enemies = []) {
     this.comboStep = step;
     this.swingTuned = false;
-    this.swingStorm = this.whipMaxed;
-    this.swingLengthScale = this.usesChainWeapon && this.weapon.tuneEnabled ? this.tuneSwingLength(enemies) : 1;
+    // 방출 휘두르기(회전 차지를 놓은 타)만 차지량·길이 자동 보정·원형 범위가 적용된다
+    this.releaseCharge = this.pendingRelease;
+    this.pendingRelease = null;
+    this.swingStorm = this.releaseCharge != null && this.releaseMax;
+    this.releaseMax = false;
+    const tuned = this.releaseCharge != null && this.usesChainWeapon && this.weapon.tuneEnabled;
+    this.swingLengthScale = tuned ? this.tuneSwingLength(enemies) : 1;
     this.swingDeg = null;
     this.prevSwingDeg = null;
     this.attackTimer = this.attackDuration;
@@ -248,22 +234,26 @@ export class PlayerWeapon {
     const lastStep = A.combo.length - 1;
     const wasAttacking = this.attackTimer > 0;
     if (this.attackTimer > 0) this.attackTimer -= dt * this.attackSpeedMul;
-    if (this.whipStackTimer > 0) {
-      this.whipStackTimer -= dt;
-      if (this.whipStackTimer <= 0) this.whipStacks = 0;
-    }
-    if (!this.stormOn) this.whipStacks = 0;
     if (wasAttacking && this.attackTimer <= 0) {
+      this.releaseCharge = null;
       // 마무리 타 이후엔 콤보 초기화(꾹 누르고 있으면 1타부터 다시), 그 외에는 잠깐 이어갈 시간을 준다
       this.comboTimer = this.comboStep < lastStep ? A.comboWindow : 0;
     } else if (this.attackTimer <= 0) {
       this.comboTimer -= dt;
     }
 
-    if (Input.wasPressed(ATTACK_KEY)) this.attackBufferTimer = A.inputBuffer;
-    else this.attackBufferTimer -= dt;
+    // 회전 차지가 있으면 탭/홀드를 먼저 가른다 (꾹 누르기는 연속 공격이 아니라 차지)
+    const charge = this.chargeOn;
+    if (charge) {
+      this.updateCharge(dt, stunned, enemies);
+      this.attackBufferTimer -= dt;
+    } else {
+      this.cancelCharge();
+      if (Input.wasPressed(ATTACK_KEY)) this.attackBufferTimer = A.inputBuffer;
+      else this.attackBufferTimer -= dt;
+    }
     // 미리 누른 입력이 있거나, 공격 키를 꾹 누르고 있으면 계속 이어서 공격
-    const wantsAttack = this.attackBufferTimer > 0 || Input.isDown(ATTACK_KEY);
+    const wantsAttack = this.attackBufferTimer > 0 || (!charge && Input.isDown(ATTACK_KEY));
     if (stunned || this.dashTimer > 0 || !wantsAttack) return;
 
     if (this.attackTimer > 0) {
@@ -349,6 +339,7 @@ export class PlayerWeapon {
 
   // 사슬 휘두르기: 감긴 사슬이 채찍처럼 뻗으며 휘어지고, 끝의 분동이 궤적을 남긴다
   drawChainWhip(ctx, cam) {
+    if (this.charging) return this.drawChargeSpin(ctx, cam);
     const t = this.attackElapsed;
     if (t < 0) return;
     const S = this.step;
@@ -410,26 +401,33 @@ export class PlayerWeapon {
     ctx.strokeRect(x2 - ws / 2 + 0.5, y2 - ws / 2 + 0.5, ws - 1, ws - 1);
   }
 
-  // 채찍 폭풍 최대: 플레이어 둘레를 한 바퀴 도는 사슬과 원형 범위
+  // 채찍 폭풍 최대: 사슬이 머리 위에서 앞쪽으로 아치를 그리며 쓸어내리는 모습과 전방 반타원 범위
   drawStormSpin(ctx, cam, t) {
-    const S = this.step, R = this.weapon.stormRadius;
+    const S = this.step, W = this.weapon;
     const k = Math.min(1, Math.max(0, (t - S.startup) / S.active));
     const fade = t < S.startup ? 0.3 : t < S.startup + S.active ? 1 : Math.max(0, 1 - (t - S.startup - S.active) / S.recovery);
     const cx = this.x + this.w / 2 - cam.x, cy = this.y + this.h / 2 - cam.y;
-    const a = k * 2 * Math.PI * this.facing;
+    const RX = W.stormReachX, RY = W.stormReachY;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(this.facing, 1); // 오른쪽 기준으로 그리고 바라보는 방향이면 뒤집는다
     ctx.strokeStyle = `rgba(255,204,77,${0.5 * fade})`;
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.arc(cx, cy, R, 0, 2 * Math.PI);
+    ctx.ellipse(0, 0, RX, RY, 0, -Math.PI / 2, Math.PI / 2);
+    ctx.closePath();
     ctx.stroke();
+    const a = -Math.PI / 2 + k * Math.PI; // 위 → 앞 → 아래로 쓸어내림
+    const wx = Math.cos(a) * RX, wy = Math.sin(a) * RY;
     ctx.strokeStyle = `rgba(220,230,255,${fade})`;
     ctx.lineWidth = 4;
     ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    ctx.lineTo(cx + Math.cos(a) * R, cy + Math.sin(a) * R);
+    ctx.moveTo(0, 0);
+    ctx.lineTo(wx, wy);
     ctx.stroke();
     ctx.fillStyle = '#5b6573';
-    ctx.fillRect(cx + Math.cos(a) * R - 6, cy + Math.sin(a) * R - 6, 12, 12);
+    ctx.fillRect(wx - 6, wy - 6, 12, 12);
+    ctx.restore();
   }
 }

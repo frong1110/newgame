@@ -12,6 +12,8 @@ import { playSfx } from './audio.js';
 import { Effects } from './effects.js';
 import { resolveCombat } from './combat.js';
 import { installBindHooks, updateTethers, drawBindChains } from './bindChains.js';
+import { BindPull } from './bindPull.js';
+import { Projectiles } from './projectiles.js';
 import { drawHUD, drawVersion } from './hud.js';
 
 const VERSION = __APP_VERSION__; // package.json 의 version (vite.config.js 에서 넣어 줌)
@@ -20,18 +22,24 @@ const canvas = document.getElementById('game');
 const isTouch = setupTouchControls(); // 터치 기기(또는 ?touch=1)에서 화면 버튼 표시
 const ctx = canvas.getContext('2d');
 
-const world = new World(LEVELS.level1);
+// 맵: 기본은 결박 시험장. 주소에 ?level=level1 을 붙이면 예전 시험장 (회귀 재생용)
+const world = new World(LEVELS[new URLSearchParams(location.search).get('level')] ?? LEVELS.bind);
 const skillTree = new SkillTree(PLAYER);
 const player = new Player(world.spawn.x, world.spawn.y, skillTree.stats);
 const enemies = world.enemySpawns.map((pos) => new Enemy('dummy', pos));
 const cam = { x: 0, y: 0, w: canvas.width, h: canvas.height };
 const effects = new Effects();
 installBindHooks(player, enemies, effects);
+const projectiles = new Projectiles(); // 분동 갈래 쳐내기 대상 (P 키로 테스트 발사)
+player.projectiles = projectiles;
+
 
 const STEP = GAME.fixedStep; // 고정 시간 간격 물리 (프레임레이트와 무관하게 같은 조작감)
 let acc = 0;
 let last = performance.now();
 const hitstop = { t: 0 }; // 타격 순간 잠깐 멈추는 연출 (combat.js 가 갱신)
+const bindPull = new BindPull(player, enemies, effects, hitstop); // 결박 갈래: 팽팽한 줄·끌어모으기
+player.bindPull = bindPull;
 
 // 게임 모드: 'play' | 'choice'(방 클리어 후 스킬 고르기) | 'tree'(스킬 트리 보기)
 let mode = 'play';
@@ -86,6 +94,8 @@ function resetRun() {
   applySkills();
   player.respawn(world.spawn.x, world.spawn.y);
   enemies.forEach((e) => e.reset());
+  projectiles.list = [];
+  bindPull.state = null;
   room = 1;
   clearTimer = -1;
   mode = 'play';
@@ -152,6 +162,9 @@ function update(dt) {
 
   player.update(dt, world, enemies);
   for (const e of enemies) e.update(dt, world);
+  if (Input.wasPressed('KeyP')) projectiles.fireTest(player, enemies); // 테스트용 투사체
+  bindPull.update(dt);
+  projectiles.update(dt, player, enemies, world, hitstop);
   resolveCombat(player, enemies, effects, hitstop);
   updateRoomClear(dt);
 
@@ -189,6 +202,8 @@ function render() {
   effects.drawUnder(ctx, view);
   for (const e of enemies) e.draw(ctx, view);
   drawBindChains(ctx, view, player, enemies, effects.transfers);
+  bindPull.draw(ctx, view);
+  projectiles.draw(ctx, view);
   player.draw(ctx, view);
   effects.drawOver(ctx, view);
   drawHUD(ctx, canvas, { player, enemies, skillTree, room, isTouch });
@@ -222,7 +237,7 @@ function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 // 개발 서버에서만 디버깅/자동 테스트용으로 상태를 노출 (배포 빌드에는 포함되지 않음)
 if (import.meta.env.DEV) {
   window.__game = {
-    playSfx, player, enemies, world, skillTree, Input,
+    playSfx, player, enemies, world, skillTree, Input, projectiles, bindPull,
     get mode() { return mode; }, get room() { return room; }, get choices() { return choices; },
     get hitstop() { return hitstop.t; },
     // 자동 테스트용: 실시간 루프를 멈추고 고정 시간 간격으로 n 번 진행 (같은 입력이면 항상 같은 결과)

@@ -8,7 +8,7 @@ export function drawHUD(ctx, canvas, { player, enemies, skillTree, room, isTouch
   ctx.fillText(`combo: ${comboLabel}`, 12, 58);
   const dashReady = player.dashCooldownTimer <= 0 && (player.usesChain || player.onGround || player.airDashesUsed < player.stats.dash.maxAirDashes);
   ctx.fillText(`${player.usesChain ? 'chain' : 'dash'}: ${player.isDashing ? 'GO' : player.chain.active ? player.chain.phase : dashReady ? 'ready' : '...'}${player.dodgeTimer > 0 ? ' (무적)' : ''}`, 12, 76);
-  if (player.stormOn) ctx.fillText(`채찍 폭풍: ${player.whipStacks}/${player.weapon.stormMaxStacks}${player.whipMaxed ? ' MAX' : ''}`, 12, 112);
+  if (player.chargeOn) ctx.fillText(`회전: 차지 ${Math.round(player.chargeLevel * 100)}%${player.weapon.storeEnabled ? `  저장 ${player.storedShots}/${player.weapon.storeMax}` : ''}${player.stormOn ? `  스택 ${player.spinStacks}/${player.weapon.stormMaxStacks}${player.stormMaxed ? ' MAX' : ''}` : ''}`, 12, 112);
   ctx.fillText(`room: ${room}   enemies: ${enemies.filter((e) => e.alive).length}/${enemies.length}`, 12, 94);
 
   const owned = [...skillTree.owned].map((id) => skillTree.byId[id].name);

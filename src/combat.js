@@ -1,10 +1,12 @@
 // 한 프레임의 타격 판정을 모아서 처리한다. hitstop 은 { t } 객체로 받아 화면 멈춤 시간을 갱신한다
 //   - 내리꽂기(대시 트리) 충격, 내리찍기(사슬 무기) 충격 이펙트
-//   - 플레이어 공격(휘두르기·검) → 적, 끝부분 적중 효과(불꽃·번쩍임·효과음·감기·분동 강타)
+//   - 플레이어 공격(휘두르기·검) → 적, 끝부분 적중 효과(불꽃·번쩍임·효과음·감기, 최대 스택 방출 태그)
 //   - 던져져 날아가는 적 → 다른 적 (회전 투척)
 //   - 적 몸통 → 플레이어
 import { overlaps } from './physics.js';
 import { playSfx } from './audio.js';
+import { bindWithCap } from './bindChains.js';
+import { emitTag } from './tags.js';
 
 // 내리꽂기: 몸쪽 ~ 분동이 떨어진 지점(left~right), 위로 height 안의 적에게 큰 피해
 function resolveSlam(player, enemies, effects, hitstop) {
@@ -44,12 +46,11 @@ export function resolveCombat(player, enemies, effects, hitstop) {
     const hit = player.attackHitTest(e);
     if (hit && e.takeHit(hit.damage, hit.dir ?? player.facing, hit.knockbackX, hit.knockbackY, player.attackId)) {
       hitstop.t = hit.hitstop;
-      if (player.usesChainWeapon) player.onChainHit(hit.tip);
       if (hit.tip) {
         effects.addTipHit(hit.point[0], hit.point[1]);
         playSfx('tipHit');
-        if (hit.bind > 0) e.bind(hit.bind, 'player'); // 감기: 캐릭터와 사슬로 이어 묶음
-        if (hit.stun > 0) e.stunTimer = Math.max(e.stunTimer, hit.stun); // 분동 강타
+        if (hit.bind > 0) bindWithCap(player, enemies, e, hit.bind, hit.chain); // 감기: 캐릭터와 사슬로 이어 묶음 (동시에 bindMaxTargets 명까지)
+        if (hit.max) emitTag('releaseHit', { enemy: e, source: 'weapon', point: hit.point }); // 채찍 폭풍: 공용 증강 태그 효과 연결
       }
     }
     // 던져져 날아가는 적(공중 상태) → 다른 적 (회전 투척). 띄워진 적은 피해 없음

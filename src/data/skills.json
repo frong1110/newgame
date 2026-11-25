@@ -14,7 +14,7 @@
         {
           "id": "cw_bind",
           "name": "감기",
-          "description": "끝부분 적중 시 적을 캐릭터와 사슬로 이어 1초 속박 (너무 멀어지면 끊어짐)",
+          "description": "끝부분 적중 시 1초 속박, 사슬은 3초 유지 (최대 3명, 멀어지면 끊김)",
           "requires": [],
           "pos": [
             0,
@@ -25,13 +25,23 @@
               "stat": "chainWeapon.tipBindTime",
               "op": "set",
               "value": 1.0
+            },
+            {
+              "stat": "chainWeapon.tipChainTime",
+              "op": "set",
+              "value": 3.0
+            },
+            {
+              "stat": "chainWeapon.bindMaxTargets",
+              "op": "set",
+              "value": 3
             }
           ]
         },
         {
-          "id": "cw_link",
-          "name": "연결",
-          "description": "묶인 적끼리 사슬로 연결, 한 적이 받는 피해의 30%를 다른 묶인 적도 받음",
+          "id": "cw_taut",
+          "name": "팽팽한 줄",
+          "description": "묶인 적 사이 선에 닿으면 피해·속박. 2명 이상 묶였을 때 C: 서로 충돌",
           "requires": [
             "cw_bind"
           ],
@@ -41,18 +51,18 @@
           ],
           "effects": [
             {
-              "stat": "chainWeapon.linkShare",
+              "stat": "chainWeapon.tautEnabled",
               "op": "set",
-              "value": 0.3
+              "value": true
             }
           ]
         },
         {
           "id": "cw_prison",
           "name": "사슬 감옥",
-          "description": "묶인 적이 죽으면 주변 200px 안의 적 최대 3마리에게 사슬이 옮겨 붙어 속박",
+          "description": "묶인 적이 죽으면 근처 3마리에 전이. 2명 이상 묶였을 때 C: 모아서 폭발",
           "requires": [
-            "cw_link"
+            "cw_taut"
           ],
           "pos": [
             0,
@@ -69,7 +79,7 @@
         {
           "id": "cw_spin_throw",
           "name": "회전 투척",
-          "description": "당긴 적을 휘둘러 앞으로 던짐. 당기는 동안 ↑ 를 누르면 위로 띄움 (둘 다 공중 상태)",
+          "description": "당긴 적을 휘둘러 던짐 (↑ 면 위로 띄움)",
           "requires": [],
           "pos": [
             1,
@@ -105,7 +115,7 @@
         {
           "id": "cw_flail_storm",
           "name": "철퇴 폭풍",
-          "description": "당긴 적을 매달고 회전, 휘말린 적 모두 피해. C 로 던지면 공중 상태가 되고, C 로 다시 내리찍음",
+          "description": "당긴 적을 매달고 회전해 모두 피해. C 로 던지고, 다시 C 로 내리찍음",
           "requires": [
             "cw_slam"
           ],
@@ -122,15 +132,20 @@
           ]
         },
         {
-          "id": "cw_weight_tune",
-          "name": "분동 조율",
-          "description": "휘두를 때 사슬 길이를 가장 가까운 적에 맞춤. 끝부분 판정 +50%, 대신 추가 피해 절반",
+          "id": "cw_spin_charge",
+          "name": "회전 차지",
+          "description": "X 꾹: 차지·쳐내기, 놓으면 방출. 판정 +50%, 추가 피해 절반",
           "requires": [],
           "pos": [
             2,
             0
           ],
           "effects": [
+            {
+              "stat": "chainWeapon.chargeEnabled",
+              "op": "set",
+              "value": true
+            },
             {
               "stat": "chainWeapon.tuneEnabled",
               "op": "set",
@@ -154,11 +169,11 @@
           ]
         },
         {
-          "id": "cw_weight_smash",
-          "name": "분동 강타",
-          "description": "끝부분 피해 +25%, 짧은 기절",
+          "id": "cw_deflect_store",
+          "name": "쳐내기 축적",
+          "description": "쳐낸 투사체를 5개까지 저장, 방출 시 부채꼴 반사",
           "requires": [
-            "cw_weight_tune"
+            "cw_spin_charge"
           ],
           "pos": [
             2,
@@ -166,23 +181,18 @@
           ],
           "effects": [
             {
-              "stat": "chainWeapon.tipDamageMultiplier",
-              "op": "mul",
-              "value": 1.25
-            },
-            {
-              "stat": "chainWeapon.tipStun",
+              "stat": "chainWeapon.storeEnabled",
               "op": "set",
-              "value": 0.5
+              "value": true
             }
           ]
         },
         {
           "id": "cw_whip_storm",
           "name": "채찍 폭풍",
-          "description": "끝부분 적중마다 공격 속도 +12%·피해 +15% 가 쌓임(최대 5, 4초간 유지, 일반 적중·빗나감은 유지). 최대면 휘두르기가 원형 범위로",
+          "description": "쳐내기·적중으로 스택(5): 차지·범위 증가. 최대면 전방 넓은 아치",
           "requires": [
-            "cw_weight_smash"
+            "cw_deflect_store"
           ],
           "pos": [
             2,
