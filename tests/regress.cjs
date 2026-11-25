@@ -5,7 +5,7 @@
 //   3) 바꾸기 전 기록과 바꾼 뒤 기록을 비교한다
 // playwright 는 package.json 에 없다 (클라우드 환경에는 미리 설치돼 있음). 로컬에서 돌리려면 `npm i -D playwright`.
 const { chromium } = require('playwright'); const fs = require('fs');
-const BASE_URL = process.env.BASE_URL || 'http://localhost:5173/';
+const BASE_URL = process.env.BASE_URL || 'http://localhost:5173/?level=level1';
 (async () => {
   const b = await chromium.launch(); const p = await b.newPage();
   const errs = []; p.on('pageerror', e => errs.push(e.message)); p.on('console', m => m.type() === 'error' && errs.push(m.text()));

@@ -139,11 +139,15 @@ export class PlayerWeapon {
     if (!this.isAttackActive) return null;
     const S = this.step;
     if (this.usesChainWeapon && this.swingStorm) {
-      // 채찍 폭풍 최대 스택 방출: 플레이어 중심 원형 범위, 전부 끝부분 취급
+      // 채찍 폭풍 최대 스택 방출: 전방으로 넓게 퍼지는 아치(반타원). 가로 stormReachX, 세로는 좁은 stormReachY, 전부 끝부분 취급
       const W = this.weapon;
       const cx = this.x + this.w / 2, cy = this.y + this.h / 2;
-      const dx = Math.max(e.x - cx, 0, cx - (e.x + e.w)), dy = Math.max(e.y - cy, 0, cy - (e.y + e.h));
-      if (Math.hypot(dx, dy) > W.stormRadius) return null;
+      const f = this.facing;
+      const farEdge = f > 0 ? e.x + e.w - cx : cx - e.x; // 적의 앞쪽 끝까지 전방 거리 (음수면 완전히 뒤)
+      if (farEdge < -W.stormBackReach) return null;
+      const fwd = Math.max(0, f > 0 ? e.x - cx : cx - (e.x + e.w));
+      const dy = Math.max(e.y - cy, 0, cy - (e.y + e.h));
+      if ((fwd / W.stormReachX) ** 2 + (dy / W.stormReachY) ** 2 > 1) return null;
       const ex = e.x + e.w / 2;
       return {
         damage: (S.damage + (S.tipDamage - S.damage) * W.tipBonusMultiplier) * this.chargeDamageMul,
@@ -151,10 +155,10 @@ export class PlayerWeapon {
         knockbackY: S.knockbackY,
         hitstop: S.tipHitstop,
         tip: true,
-        omni: true,
+        max: true,
         bind: W.tipBindTime,
         point: [ex, e.y + e.h / 2],
-        dir: Math.sign(ex - cx) || this.facing,
+        dir: f,
       };
     }
     if (!this.usesChainWeapon) {
@@ -211,8 +215,8 @@ export class PlayerWeapon {
     // 방출 휘두르기(회전 차지를 놓은 타)만 차지량·길이 자동 보정·원형 범위가 적용된다
     this.releaseCharge = this.pendingRelease;
     this.pendingRelease = null;
-    this.swingStorm = this.releaseCharge != null && this.releaseOmni;
-    this.releaseOmni = false;
+    this.swingStorm = this.releaseCharge != null && this.releaseMax;
+    this.releaseMax = false;
     const tuned = this.releaseCharge != null && this.usesChainWeapon && this.weapon.tuneEnabled;
     this.swingLengthScale = tuned ? this.tuneSwingLength(enemies) : 1;
     this.swingDeg = null;
@@ -395,26 +399,33 @@ export class PlayerWeapon {
     ctx.strokeRect(x2 - ws / 2 + 0.5, y2 - ws / 2 + 0.5, ws - 1, ws - 1);
   }
 
-  // 채찍 폭풍 최대: 플레이어 둘레를 한 바퀴 도는 사슬과 원형 범위
+  // 채찍 폭풍 최대: 사슬이 머리 위에서 앞쪽으로 아치를 그리며 쓸어내리는 모습과 전방 반타원 범위
   drawStormSpin(ctx, cam, t) {
-    const S = this.step, R = this.weapon.stormRadius;
+    const S = this.step, W = this.weapon;
     const k = Math.min(1, Math.max(0, (t - S.startup) / S.active));
     const fade = t < S.startup ? 0.3 : t < S.startup + S.active ? 1 : Math.max(0, 1 - (t - S.startup - S.active) / S.recovery);
     const cx = this.x + this.w / 2 - cam.x, cy = this.y + this.h / 2 - cam.y;
-    const a = k * 2 * Math.PI * this.facing;
+    const RX = W.stormReachX, RY = W.stormReachY;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.scale(this.facing, 1); // 오른쪽 기준으로 그리고 바라보는 방향이면 뒤집는다
     ctx.strokeStyle = `rgba(255,204,77,${0.5 * fade})`;
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.arc(cx, cy, R, 0, 2 * Math.PI);
+    ctx.ellipse(0, 0, RX, RY, 0, -Math.PI / 2, Math.PI / 2);
+    ctx.closePath();
     ctx.stroke();
+    const a = -Math.PI / 2 + k * Math.PI; // 위 → 앞 → 아래로 쓸어내림
+    const wx = Math.cos(a) * RX, wy = Math.sin(a) * RY;
     ctx.strokeStyle = `rgba(220,230,255,${fade})`;
     ctx.lineWidth = 4;
     ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    ctx.lineTo(cx + Math.cos(a) * R, cy + Math.sin(a) * R);
+    ctx.moveTo(0, 0);
+    ctx.lineTo(wx, wy);
     ctx.stroke();
     ctx.fillStyle = '#5b6573';
-    ctx.fillRect(cx + Math.cos(a) * R - 6, cy + Math.sin(a) * R - 6, 12, 12);
+    ctx.fillRect(wx - 6, wy - 6, 12, 12);
+    ctx.restore();
   }
 }

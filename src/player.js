@@ -62,7 +62,7 @@ export class Player {
     this.chargeLevel = 0; // 차지량 0~1
     this.pendingRelease = null; // 방출 휘두르기를 시작할 때 startAttack 에 넘기는 차지량
     this.releaseCharge = null; // 이번 휘두르기가 방출 타라면 그때의 차지량 (아니면 null)
-    this.releaseOmni = false;
+    this.releaseMax = false;
     this.storedShots = 0; // 쳐내기 축적: 분동에 저장된 투사체 수
     this.spinStacks = 0; // 채찍 폭풍 회전 스택
     this.spinStackTimer = 0; // 스택이 사라지기까지 남은 시간

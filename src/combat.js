@@ -50,7 +50,7 @@ export function resolveCombat(player, enemies, effects, hitstop) {
         effects.addTipHit(hit.point[0], hit.point[1]);
         playSfx('tipHit');
         if (hit.bind > 0) bindWithCap(player, enemies, e, hit.bind); // 감기: 캐릭터와 사슬로 이어 묶음 (동시에 bindMaxTargets 명까지)
-        if (hit.omni) emitTag('releaseHit', { enemy: e, source: 'weapon', point: hit.point }); // 채찍 폭풍: 공용 증강 태그 효과 연결
+        if (hit.max) emitTag('releaseHit', { enemy: e, source: 'weapon', point: hit.point }); // 채찍 폭풍: 공용 증강 태그 효과 연결
       }
     }
     // 던져져 날아가는 적(공중 상태) → 다른 적 (회전 투척). 띄워진 적은 피해 없음

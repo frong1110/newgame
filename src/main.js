@@ -22,7 +22,8 @@ const canvas = document.getElementById('game');
 const isTouch = setupTouchControls(); // 터치 기기(또는 ?touch=1)에서 화면 버튼 표시
 const ctx = canvas.getContext('2d');
 
-const world = new World(LEVELS.level1);
+// 맵: 기본은 결박 시험장. 주소에 ?level=level1 을 붙이면 예전 시험장 (회귀 재생용)
+const world = new World(LEVELS[new URLSearchParams(location.search).get('level')] ?? LEVELS.bind);
 const skillTree = new SkillTree(PLAYER);
 const player = new Player(world.spawn.x, world.spawn.y, skillTree.stats);
 const enemies = world.enemySpawns.map((pos) => new Enemy('dummy', pos));

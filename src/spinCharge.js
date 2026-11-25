@@ -4,7 +4,7 @@ import { ATTACK_KEY } from './controls.js';
 // 사슬 무기 분동 갈래 (회전 차지 · 쳐내기 축적 · 채찍 폭풍). player.js 의 Player 에 메서드로 붙는다 (applyMixins).
 //   회전 차지: 공격 키를 탭하면 일반 휘두르기, 꾹 누르면(chargeHoldThreshold) 사슬을 머리 위로 돌려 속도를 쌓고 놓으면 방출
 //   쳐내기 축적: 도는 동안 쳐낸 투사체를 분동에 저장(storeMax), 방출하면 저장한 만큼 부채꼴로 반사
-//   채찍 폭풍: 쳐내기·회전 중 분동 적중으로 회전 스택, 최대 스택 방출은 전방위 원형 반사 (태그 효과는 tags.js 로 연결)
+//   채찍 폭풍: 쳐내기·회전 중 분동 적중으로 회전 스택, 최대 스택 방출은 전방 넓은 아치 반사 (태그 효과는 tags.js 로 연결)
 export class PlayerSpin {
   get chargeOn() {
     return this.usesChainWeapon && this.weapon.chargeEnabled;
@@ -117,24 +117,24 @@ export class PlayerSpin {
     return true;
   }
 
-  // 놓아서 방출: 가장 센 타(chargeReleaseStep)로 휘두르고, 저장한 투사체를 반사한다 (최대 스택이면 전방위)
+  // 놓아서 방출: 가장 센 타(chargeReleaseStep)로 휘두르고, 저장한 투사체를 반사한다 (최대 스택이면 전방 넓은 아치)
   releaseCharge_(enemies) {
     const W = this.weapon;
-    const omni = this.stormMaxed;
+    const maxed = this.stormMaxed;
     this.pendingRelease = this.chargeLevel;
-    this.releaseOmni = omni;
+    this.releaseMax = maxed;
     this.cancelCharge();
     this.startAttack(W.chargeReleaseStep, enemies);
     const n = this.storedShots;
     this.storedShots = 0;
     const cx = this.x + this.w / 2, cy = this.y + this.h / 2;
     for (let i = 0; i < n; i++) {
-      const a = omni ? (2 * Math.PI * i) / n
-        : n === 1 ? 0 : ((-W.reflectFanAngle / 2 + (W.reflectFanAngle * i) / (n - 1)) * Math.PI) / 180;
-      const dx = omni ? Math.cos(a) : this.facing * Math.cos(a);
+      const spread = maxed ? W.stormFanAngle : W.reflectFanAngle; // 최대 스택은 전방으로 훨씬 넓게
+      const a = n === 1 ? 0 : ((-spread / 2 + (spread * i) / (n - 1)) * Math.PI) / 180;
+      const dx = this.facing * Math.cos(a);
       this.projectiles?.spawn(cx, cy, dx * W.reflectSpeed, Math.sin(a) * W.reflectSpeed, 'player', W.deflectDamage);
     }
-    if (omni) this.spinStacks = 0; // 최대 스택은 방출로 소모
+    if (maxed) this.spinStacks = 0; // 최대 스택은 방출로 소모
   }
 
   // 돌리는 중: 머리 위 분동 궤도와 쳐내기 범위, 차지 막대, 저장한 투사체·스택 표시
