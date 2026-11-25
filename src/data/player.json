@@ -133,7 +133,7 @@
     "deflectKnockbackY": 120,
     "storeEnabled": false,
     "storeMax": 5,
-    "reflectFanAngle": 70,
+    "reflectFanAngle": 30,
     "reflectSpeed": 520,
     "stormEnabled": false,
     "stormMaxStacks": 5,
