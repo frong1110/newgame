@@ -42,8 +42,9 @@ export function resolveCombat(player, enemies, effects, hitstop) {
     if (!e.alive) continue;
     // 플레이어 공격 → 적
     const hit = player.attackHitTest(e);
-    if (hit && e.takeHit(hit.damage, player.facing, hit.knockbackX, hit.knockbackY, player.attackId)) {
+    if (hit && e.takeHit(hit.damage, hit.dir ?? player.facing, hit.knockbackX, hit.knockbackY, player.attackId)) {
       hitstop.t = hit.hitstop;
+      if (player.usesChainWeapon) player.onChainHit(hit.tip);
       if (hit.tip) {
         effects.addTipHit(hit.point[0], hit.point[1]);
         playSfx('tipHit');

@@ -53,6 +53,9 @@ export class Player {
     this.swingLengthScale = 1; // 이번 타의 사슬 길이 배율 (분동 조율로 바뀜)
     this.swingDeg = null; // 이번 프레임 휘두르기 각도 (사슬 판정용)
     this.prevSwingDeg = null;
+    this.whipStacks = 0; // 채찍 폭풍 스택
+    this.whipStackTimer = 0; // 스택이 사라지기까지 남은 시간
+    this.swingStorm = false; // 이번 휘두르기가 원형 범위인지
     this.dashCooldownTimer = 0;
     this.dodgeTimer = 0; // 대시 무적 (대시 직후 약간 더 유지)
     this.airDashesUsed = 0;
