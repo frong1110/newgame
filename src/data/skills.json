@@ -180,7 +180,7 @@
         {
           "id": "cw_whip_storm",
           "name": "채찍 폭풍",
-          "description": "끝부분 연속 적중마다 공격 속도·피해가 쌓이고, 최대면 원형 범위",
+          "description": "끝부분 적중마다 공격 속도 +12%·피해 +15% 가 쌓임(최대 5, 4초간 유지, 일반 적중·빗나감은 유지). 최대면 휘두르기가 원형 범위로",
           "requires": [
             "cw_weight_smash"
           ],
@@ -188,8 +188,13 @@
             2,
             2
           ],
-          "implemented": false,
-          "effects": []
+          "effects": [
+            {
+              "stat": "chainWeapon.stormEnabled",
+              "op": "set",
+              "value": true
+            }
+          ]
         }
       ]
     },

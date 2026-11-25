@@ -23,6 +23,30 @@ export class PlayerWeapon {
     return S.startup + S.active + S.recovery;
   }
 
+  // 채찍 폭풍: 스택에 따른 공격 속도·피해 배율 (스킬 없으면 1)
+  get stormOn() {
+    return this.usesChainWeapon && this.weapon.stormEnabled;
+  }
+
+  get attackSpeedMul() {
+    return this.stormOn ? 1 + this.whipStacks * this.weapon.stormSpeedPerStack : 1;
+  }
+
+  get stormDamageMul() {
+    return this.stormOn ? 1 + this.whipStacks * this.weapon.stormDamagePerStack : 1;
+  }
+
+  get whipMaxed() {
+    return this.stormOn && this.whipStacks >= this.weapon.stormMaxStacks;
+  }
+
+  // 사슬 적중 알림: 끝부분이면 스택 +1, 아니면 유지만 (타이머 갱신)
+  onChainHit(tip) {
+    if (!this.stormOn) return;
+    if (tip) this.whipStacks = Math.min(this.weapon.stormMaxStacks, this.whipStacks + 1);
+    if (this.whipStacks > 0) this.whipStackTimer = this.weapon.stormStackTime;
+  }
+
   // 공격 시작 후 경과 시간 (공격 중이 아니면 -1)
   get attackElapsed() {
     return this.attackTimer > 0 ? this.attackDuration - this.attackTimer : -1;
@@ -138,6 +162,25 @@ export class PlayerWeapon {
   attackHitTest(e) {
     if (!this.isAttackActive) return null;
     const S = this.step;
+    if (this.usesChainWeapon && this.swingStorm) {
+      // 채찍 폭풍 최대: 플레이어 중심 원형 범위, 전부 끝부분 취급
+      const W = this.weapon;
+      const cx = this.x + this.w / 2, cy = this.y + this.h / 2;
+      const dx = Math.max(e.x - cx, 0, cx - (e.x + e.w)), dy = Math.max(e.y - cy, 0, cy - (e.y + e.h));
+      if (Math.hypot(dx, dy) > W.stormRadius) return null;
+      const ex = e.x + e.w / 2;
+      return {
+        damage: (S.damage + (S.tipDamage - S.damage) * W.tipBonusMultiplier) * W.tipDamageMultiplier * this.stormDamageMul,
+        knockbackX: S.knockbackX,
+        knockbackY: S.knockbackY,
+        hitstop: S.tipHitstop,
+        tip: true,
+        bind: W.tipBindTime,
+        stun: W.tipStun,
+        point: [ex, e.y + e.h / 2],
+        dir: Math.sign(ex - cx) || this.facing,
+      };
+    }
     if (!this.usesChainWeapon) {
       const hb = this.getAttackHitbox();
       if (!overlaps(hb, e)) return null;
@@ -176,7 +219,7 @@ export class PlayerWeapon {
     const tip = best >= tipFrom && reach >= L * minExt;
     return {
       // 끝부분 피해 = 몸통 피해 + 추가 피해 × tipBonusMultiplier(분동 조율 리스크), 그다음 × tipDamageMultiplier(분동 강타). 소수 그대로
-      damage: tip ? (S.damage + (S.tipDamage - S.damage) * W.tipBonusMultiplier) * W.tipDamageMultiplier : S.damage,
+      damage: (tip ? (S.damage + (S.tipDamage - S.damage) * W.tipBonusMultiplier) * W.tipDamageMultiplier : S.damage) * this.stormDamageMul,
       knockbackX: S.knockbackX,
       knockbackY: S.knockbackY,
       hitstop: tip ? S.tipHitstop : S.hitstop,
@@ -190,6 +233,7 @@ export class PlayerWeapon {
   startAttack(step, enemies = []) {
     this.comboStep = step;
     this.swingTuned = false;
+    this.swingStorm = this.whipMaxed;
     this.swingLengthScale = this.usesChainWeapon && this.weapon.tuneEnabled ? this.tuneSwingLength(enemies) : 1;
     this.swingDeg = null;
     this.prevSwingDeg = null;
@@ -203,7 +247,12 @@ export class PlayerWeapon {
     const A = this.weapon;
     const lastStep = A.combo.length - 1;
     const wasAttacking = this.attackTimer > 0;
-    if (this.attackTimer > 0) this.attackTimer -= dt;
+    if (this.attackTimer > 0) this.attackTimer -= dt * this.attackSpeedMul;
+    if (this.whipStackTimer > 0) {
+      this.whipStackTimer -= dt;
+      if (this.whipStackTimer <= 0) this.whipStacks = 0;
+    }
+    if (!this.stormOn) this.whipStacks = 0;
     if (wasAttacking && this.attackTimer <= 0) {
       // 마무리 타 이후엔 콤보 초기화(꾹 누르고 있으면 1타부터 다시), 그 외에는 잠깐 이어갈 시간을 준다
       this.comboTimer = this.comboStep < lastStep ? A.comboWindow : 0;
@@ -303,6 +352,7 @@ export class PlayerWeapon {
     const t = this.attackElapsed;
     if (t < 0) return;
     const S = this.step;
+    if (this.swingStorm) return this.drawStormSpin(ctx, cam, t);
     const from = S.fromAngle, to = S.toAngle;
     const sweep = Math.sign(to - from);
     const windup = from - sweep * 15;
@@ -358,5 +408,28 @@ export class PlayerWeapon {
     ctx.strokeStyle = '#e8eef5';
     ctx.lineWidth = 1;
     ctx.strokeRect(x2 - ws / 2 + 0.5, y2 - ws / 2 + 0.5, ws - 1, ws - 1);
+  }
+
+  // 채찍 폭풍 최대: 플레이어 둘레를 한 바퀴 도는 사슬과 원형 범위
+  drawStormSpin(ctx, cam, t) {
+    const S = this.step, R = this.weapon.stormRadius;
+    const k = Math.min(1, Math.max(0, (t - S.startup) / S.active));
+    const fade = t < S.startup ? 0.3 : t < S.startup + S.active ? 1 : Math.max(0, 1 - (t - S.startup - S.active) / S.recovery);
+    const cx = this.x + this.w / 2 - cam.x, cy = this.y + this.h / 2 - cam.y;
+    const a = k * 2 * Math.PI * this.facing;
+    ctx.strokeStyle = `rgba(255,204,77,${0.5 * fade})`;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(cx, cy, R, 0, 2 * Math.PI);
+    ctx.stroke();
+    ctx.strokeStyle = `rgba(220,230,255,${fade})`;
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(a) * R, cy + Math.sin(a) * R);
+    ctx.stroke();
+    ctx.fillStyle = '#5b6573';
+    ctx.fillRect(cx + Math.cos(a) * R - 6, cy + Math.sin(a) * R - 6, 12, 12);
   }
 }
