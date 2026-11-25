@@ -327,7 +327,7 @@
     "stormTurns": 1,
     "stormRadius": 95,
     "stormScaleY": 0.45,
-    "stormGroundLift": 60,
+    "stormGroundLift": 60, "stormLiftSpeed": 500,
     "stormHitPad": 8,
     "stormDamage": 2,
     "stormSelfDamage": 1,

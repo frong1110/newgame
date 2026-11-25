@@ -376,6 +376,7 @@ export class Chain {
     this.lastSpinY = enemy.y;
     this.releaseRequested = false;
     this.spinHit = new Set();
+    this.spinLift = 0; // 궤도 전체를 위로 띄운 정도 (땅에 닿지 않게)
   }
 
   updateSpin(dt, p, world, enemies, C) {
@@ -393,7 +394,17 @@ export class Chain {
       this.spinTurn = Math.floor(turns);
       this.spinHit.clear();
     }
-    const [cx, cy] = center(p);
+    const [cx, cy0] = center(p);
+    // 땅에 서 있어 궤도 맨 아래가 땅에 닿으면, 바닥을 끌지 않도록 궤도 전체를 부드럽게 들어 올린다
+    let lift = 0;
+    const low = { x: cx - enemy.w / 2, y: 0, w: enemy.w, h: enemy.h };
+    while (lift < C.stormGroundLift) {
+      low.y = cy0 - lift + C.stormRadius * C.stormScaleY - enemy.h / 2;
+      if (!overlapsSolid(low, world)) break;
+      lift += 2;
+    }
+    this.spinLift += Math.sign(lift - this.spinLift) * Math.min(Math.abs(lift - this.spinLift), C.stormLiftSpeed * dt);
+    const cy = cy0 - this.spinLift;
     const at = (a, r) => [cx + Math.cos(a) * r, cy + Math.sin(a) * r * C.stormScaleY];
 
     // 지난 각도 → 이번 각도 사이를 훑으며, 매단 적(머리)과 사슬에 닿은 적에게 피해 (한 번씩)
