@@ -35,9 +35,10 @@ const BASE_URL = process.env.BASE_URL || 'http://localhost:5173/';
     key('ArrowRight', true); run(40, 'walk'); tap('Space', 'jump', 20); tap('Space', 'djump', 30); key('ArrowRight', false); run(60, 'land');
     key('KeyX', true); run(130, 'holdX'); key('KeyX', false); run(30, 'x-end');
     tap('ShiftLeft', 'dash', 40); key('ArrowLeft', true); tap('ShiftLeft', 'dashL', 40); key('ArrowLeft', false); run(30, 'end'); });
-  // B. 분동 조율 / 분동 강타
-  await sc('B', () => { for (const gap of [40, 85, 130]) { setup(['cw_weight_tune'], 1460, 450, [[1484 + gap, 452, 99]]); tap('KeyX', 'tune' + gap, 60); }
-    setup(['cw_weight_smash'], 1460, 450, [[1569, 452, 0.3], [1640, 452, 0.3]]); key('KeyX', true); run(140, 'smash'); key('KeyX', false); run(40, 'smash-end'); });
+  // B. 회전 차지 (탭 / 홀드 후 방출) / 쳐내기 축적
+  await sc('B', () => { for (const gap of [40, 85, 130]) { setup(['cw_spin_charge'], 1460, 450, [[1484 + gap, 452, 99]]); key('KeyX', true); run(40, 'charge' + gap); key('KeyX', false); run(60, 'tune' + gap); }
+    setup(['cw_spin_charge'], 1460, 450, [[1569, 452, 99]]); tap('KeyX', 'tap', 60);
+    setup(['cw_deflect_store'], 1460, 450, [[1760, 452, 99]]); key('KeyX', true); run(15, 'spin'); window.__game.projectiles.spawn(1560, 460, -300, 0); run(60, 'deflect'); key('KeyX', false); run(60, 'fan'); });
   // C. 당기기·투척·띄우기·내리찍기·폭풍
   await sc('C', () => {
     setup([], 1500, 450, [[1680, 452, 0.4]]); tap('KeyC', 'pull', 80);
@@ -48,7 +49,8 @@ const BASE_URL = process.env.BASE_URL || 'http://localhost:5173/';
   await sc('D', () => {
     setup(['cw_prison'], 1460, 450, [[1569, 452, 0.2], [1640, 452, 99], [1720, 452, 99]]);
     tap('KeyX', 'bind', 30); window.__game.enemies[1].bind(1.5, 'player'); run(5, 'b2');
-    window.__game.enemies[0].takeHit(3, 1, 0, 0, 'r1'); run(5, 'share'); window.__game.enemies[0].takeHit(20, 1, 0, 0, 'r2'); run(40, 'prison');
+    tap('KeyC', 'gather', 100); // 팽팽한 줄 + 사슬 감옥: 끌어모아 폭발
+    window.__game.enemies[0].bind(1.5, 'player'); window.__game.enemies[1].bind(1.5, 'player'); window.__game.enemies[0].takeHit(20, 1, 0, 0, 'r2'); run(40, 'prison');
     key('ArrowLeft', true); run(90, 'tether-break'); key('ArrowLeft', false); run(10, 'D-end'); });
   // E. 사슬 이동(낭떠러지) + 내리꽂기
   await sc('E', () => {

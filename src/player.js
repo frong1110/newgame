@@ -1,6 +1,7 @@
 // 플레이어: 생성·리스폰, 매 프레임 업데이트(입력 → 대시/사슬/공격/이동/점프), 피격, 그리기.
 // 기능별 메서드는 다른 파일에 있고 아래 applyMixins 로 붙는다:
-//   playerWeapon.js (휘두르기·검·분동 조율·특수 대상), playerDash.js (대시·조준·잔상), playerSlam.js (내리꽂기)
+//   playerWeapon.js (휘두르기·검·분동 조율·특수 대상), playerDash.js (대시·조준·잔상), playerSlam.js (내리꽂기),
+//   spinCharge.js (분동 갈래: 회전 차지·쳐내기 축적·채찍 폭풍)
 import { PLAYER, GAME } from './data/index.js';
 import { Input } from './input.js';
 import { moveAndCollide, approach } from './physics.js';
@@ -10,6 +11,7 @@ import { applyMixins } from './mixin.js';
 import { PlayerWeapon } from './playerWeapon.js';
 import { PlayerDash } from './playerDash.js';
 import { PlayerSlam } from './playerSlam.js';
+import { PlayerSpin } from './spinCharge.js';
 
 export class Player {
   constructor(x, y, stats = PLAYER) {
@@ -53,9 +55,20 @@ export class Player {
     this.swingLengthScale = 1; // 이번 타의 사슬 길이 배율 (분동 조율로 바뀜)
     this.swingDeg = null; // 이번 프레임 휘두르기 각도 (사슬 판정용)
     this.prevSwingDeg = null;
-    this.whipStacks = 0; // 채찍 폭풍 스택
-    this.whipStackTimer = 0; // 스택이 사라지기까지 남은 시간
-    this.swingStorm = false; // 이번 휘두르기가 원형 범위인지
+    this.swingStorm = false; // 이번 휘두르기가 원형 범위인지 (최대 스택 방출)
+    this.charging = false; // 회전 차지 중 (공격 키를 꾹 누름)
+    this.tapPending = false; // 공격 키를 눌렀고 탭인지 홀드인지 가리는 중
+    this.chargeHold = 0;
+    this.chargeLevel = 0; // 차지량 0~1
+    this.pendingRelease = null; // 방출 휘두르기를 시작할 때 startAttack 에 넘기는 차지량
+    this.releaseCharge = null; // 이번 휘두르기가 방출 타라면 그때의 차지량 (아니면 null)
+    this.releaseOmni = false;
+    this.storedShots = 0; // 쳐내기 축적: 분동에 저장된 투사체 수
+    this.spinStacks = 0; // 채찍 폭풍 회전 스택
+    this.spinStackTimer = 0; // 스택이 사라지기까지 남은 시간
+    this.spinAngle = 0;
+    this.spinHitCd = new Map(); // 회전 중 같은 적을 연달아 맞히지 않게
+    this.spinHitSeq = 0;
     this.dashCooldownTimer = 0;
     this.dodgeTimer = 0; // 대시 무적 (대시 직후 약간 더 유지)
     this.airDashesUsed = 0;
@@ -92,7 +105,12 @@ export class Player {
     this.holdingUp = !stunned && Input.isDown('ArrowUp'); // 회전 투척: 당기는 동안 ↑ 면 띄우기
     // 철퇴 폭풍 회전 중 C 를 다시 누르면 적을 던진다 (회전 중에는 아래 특수 버튼 시작 처리가 막혀 있다)
     if (Input.wasPressed(SPECIAL_KEY) && this.pullChain.phase === 'spin') this.pullChain.releaseRequested = true;
-    if (Input.wasPressed(SPECIAL_KEY) && this.canUseSpecialChain(stunned)) {
+    // 결박 갈래: 묶인 적이 2명 이상이면 C 가 당기기 대신 끌어모으기 (팽팽한 줄: 충돌, 사슬 감옥: 폭발)
+    if (Input.wasPressed(SPECIAL_KEY) && this.canUseSpecialChain(stunned) && this.specialCooldownTimer <= 0 && this.bindPull?.tryStart()) {
+      this.attackTimer = 0;
+      this.comboTimer = 0;
+      this.specialCooldownTimer = this.stats.chainWeapon.bindPullCooldown;
+    } else if (Input.wasPressed(SPECIAL_KEY) && this.canUseSpecialChain(stunned)) {
       // 내리찍기: 공중 상태 적이 사거리 안에 있으면 그 적을 노린다 (대기시간 무시 → 띄운 직후 바로 이어짐)
       const airTarget = this.stats.pullChain.slamAirborne ? this.findAirborneTarget(enemies) : null;
       if (airTarget || this.specialCooldownTimer <= 0) {
@@ -141,7 +159,7 @@ export class Player {
     // --- 좌우 이동 ---
     const dir = inputDir;
     if (dir !== 0 && !attacking) this.facing = dir; // 공격 중에는 방향 고정
-    const maxSpeed = C.moveSpeed * (attacking && this.onGround ? this.weapon.moveSpeedMultiplier : 1);
+    const maxSpeed = C.moveSpeed * (this.charging ? this.weapon.chargeMoveMultiplier : attacking && this.onGround ? this.weapon.moveSpeedMultiplier : 1);
     const accel = this.onGround ? C.groundAccel : C.airAccel;
     const decel = this.onGround ? C.groundDecel : C.airDecel;
     if (stunned) {
@@ -211,6 +229,8 @@ export class Player {
     this.attackTimer = 0;
     this.comboTimer = 0;
     this.attackBufferTimer = 0;
+    this.cancelCharge();
+    this.storedShots = 0;
     this.dashTimer = 0;
     this.chain.cancel();
     this.pullChain.cancel();
@@ -265,4 +285,4 @@ export class Player {
   }
 }
 
-applyMixins(Player, PlayerWeapon, PlayerDash, PlayerSlam);
+applyMixins(Player, PlayerWeapon, PlayerDash, PlayerSlam, PlayerSpin);
