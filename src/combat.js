@@ -49,7 +49,7 @@ export function resolveCombat(player, enemies, effects, hitstop) {
       if (hit.tip) {
         effects.addTipHit(hit.point[0], hit.point[1]);
         playSfx('tipHit');
-        if (hit.bind > 0) bindWithCap(player, enemies, e, hit.bind); // 감기: 캐릭터와 사슬로 이어 묶음 (동시에 bindMaxTargets 명까지)
+        if (hit.bind > 0) bindWithCap(player, enemies, e, hit.bind, hit.chain); // 감기: 캐릭터와 사슬로 이어 묶음 (동시에 bindMaxTargets 명까지)
         if (hit.max) emitTag('releaseHit', { enemy: e, source: 'weapon', point: hit.point }); // 채찍 폭풍: 공용 증강 태그 효과 연결
       }
     }

@@ -32,6 +32,8 @@ export class Enemy {
     this.lastHitId = -1; // 같은 공격에 여러 번 맞지 않도록
     this.pull = null; // 사슬에 끌려오는 중이면 { x, y, speed } (목표 지점)
     this.bindTimer = 0; // 사슬에 묶여(속박) 움직이지 못하는 남은 시간 (감기 스킬)
+    this.chainTimer = 0; // 사슬이 이어져 있는 남은 시간 (속박보다 길 수 있음). 이어진 동안은 팽팽한 줄·끌어모으기·감옥 전이 대상
+    this.chainTotal = 1;
     this.bindAnchor = null; // 묶은 사슬이 이어진 곳: 'player'(감기) 또는 { x, y }(사슬 감옥: 옮겨 오기 전 적이 죽은 자리)
     // 공중 상태: 던져지거나(throw) 띄워져서(launch) 날아가는 중이면 { kind, damage, knockbackX, knockbackY, hitstop, hitId, hangLeft }
     // 머리 위에 '공중' 표시가 붙고, 내리찍기 스킬의 대상이 된다
@@ -109,11 +111,14 @@ export class Enemy {
       if (this.y > world.pixelHeight + GAME.fallRespawnMargin) this.die();
       return;
     }
+    if (this.chainTimer > 0) {
+      this.chainTimer -= dt;
+      if (this.chainTimer <= 0) this.release(); // 사슬이 풀림
+    }
     if (this.bindTimer > 0) {
       // 속박: 제자리에 묶임 (몸통 피해도 없음)
       this.bindTimer -= dt;
       this.stunTimer = Math.max(this.stunTimer, dt * 2);
-      if (this.bindTimer <= 0) this.bindAnchor = null;
     }
     if (this.stunTimer > 0) {
       this.stunTimer -= dt;
@@ -142,7 +147,7 @@ export class Enemy {
   // 회전 투척: dir 쪽으로 포물선을 그리며 날아간다. C = 던진 사슬의 수치
   throwAway(dir, C, hitId) {
     if (!this.alive) return;
-    this.bindTimer = 0;
+    this.release();
     this.vx = dir * C.throwSpeedX;
     this.vy = -C.throwSpeedY;
     this.flight = {
@@ -160,7 +165,7 @@ export class Enemy {
   // gravity: 오르내리는 중력 (높이는 그대로, 클수록 빨리 솟고 빨리 떨어짐), vx: 올라가는 동안 옆으로 밀리는 속도
   launch(height, hang, gravity, vx = 0) {
     if (!this.alive) return;
-    this.bindTimer = 0;
+    this.release();
     this.vx = vx; // 올라가는 동안 옆으로 밀리는 속도 (꼭대기에서는 멈춤)
     this.vy = -Math.sqrt(2 * gravity * height);
     this.flight = { kind: 'launch', damage: 0, hangLeft: hang, gravity };
@@ -179,11 +184,14 @@ export class Enemy {
   }
 
   // 속박: 그 자리에 묶는다. 넉백으로 튕겨 나가지 않게 속도를 없앤다
-  bind(time, anchor = null) {
+  // time: 속박(제자리 고정) 시간, chainTime: 사슬이 이어져 있는 시간 (기본은 속박과 같음, 속박보다 짧을 수 없음)
+  bind(time, anchor = null, chainTime = time) {
     if (!this.alive) return;
     if (anchor) this.bindAnchor = anchor;
     this.bindTimer = Math.max(this.bindTimer, time);
     this.bindTotal = this.bindTimer;
+    this.chainTimer = Math.max(this.chainTimer, time, chainTime);
+    this.chainTotal = this.chainTimer;
     this.vx = 0;
     this.vy = Math.max(this.vy, 0);
   }
@@ -217,15 +225,15 @@ export class Enemy {
   // 속박 풀기 (사슬이 끊어짐)
   release() {
     this.bindTimer = 0;
+    this.chainTimer = 0;
     this.bindAnchor = null;
   }
 
   die() {
     if (!this.alive) return;
-    const wasBound = this.bindTimer > 0;
+    const wasBound = this.chainTimer > 0;
     this.alive = false;
-    this.bindTimer = 0;
-    this.bindAnchor = null;
+    this.release();
     this.respawnTimer = this.stats.respawnTime;
     if (wasBound) Enemy.hooks.onBoundDied?.(this); // 사슬 감옥
   }
@@ -255,6 +263,11 @@ export class Enemy {
       ctx.stroke();
       ctx.fillStyle = '#e8eef5';
       ctx.fillRect(px, py + this.h + 3, this.w * Math.min(1, this.bindTimer / this.bindTotal), 3);
+    }
+    // 사슬이 이어져 있는 남은 시간 (속박이 풀린 뒤에도 유지): 가는 보라색 막대
+    if (this.chainTimer > 0) {
+      ctx.fillStyle = '#b58cff';
+      ctx.fillRect(px, py + this.h + 7, this.w * Math.min(1, this.chainTimer / this.chainTotal), 2);
     }
     // 공중 상태 표시: 머리 위 하늘색 화살표 + 테두리
     if (this.flight) {

@@ -14,7 +14,7 @@
         {
           "id": "cw_bind",
           "name": "감기",
-          "description": "끝부분 적중 시 1초 속박, 최대 3명 (멀어지면 끊김)",
+          "description": "끝부분 적중 시 1초 속박, 사슬은 3초 유지 (최대 3명, 멀어지면 끊김)",
           "requires": [],
           "pos": [
             0,
@@ -25,6 +25,11 @@
               "stat": "chainWeapon.tipBindTime",
               "op": "set",
               "value": 1.0
+            },
+            {
+              "stat": "chainWeapon.tipChainTime",
+              "op": "set",
+              "value": 3.0
             },
             {
               "stat": "chainWeapon.bindMaxTargets",

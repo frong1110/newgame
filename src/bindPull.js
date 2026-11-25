@@ -22,7 +22,7 @@ export class BindPull {
   }
 
   bound() {
-    return this.enemies.filter((e) => e.alive && e.bindTimer > 0);
+    return this.enemies.filter((e) => e.alive && e.chainTimer > 0);
   }
 
   // 묶인 적이 2명 이상이면 끌어모으기 시작 (player.js 의 C 입력에서 부른다). 시작했으면 true
@@ -54,7 +54,7 @@ export class BindPull {
     if (bound.length < 2) return;
     const pad = W.tautLineThickness / 2;
     for (const e of this.enemies) {
-      if (!e.alive || e.bindTimer > 0 || this.lineCd.has(e)) continue;
+      if (!e.alive || e.chainTimer > 0 || this.lineCd.has(e)) continue;
       if (!bound.some((b, i) => i > 0 && this.touches(center(bound[i - 1]), center(b), e, pad))) continue;
       this.lineCd.set(e, W.tautLineTick);
       e.takeShare(W.tautLineDamage);
@@ -82,6 +82,7 @@ export class BindPull {
     S.targets.forEach((e) => {
       const i = this.state.targets.indexOf(e);
       e.bindTimer = Math.max(e.bindTimer, 0.3);
+      e.chainTimer = Math.max(e.chainTimer, 0.3);
       e.bindTotal = Math.max(e.bindTotal ?? 0, e.bindTimer);
       e.vx = 0;
       e.x = S.from[i] + (S.cx - e.w / 2 - S.from[i]) * k;

@@ -157,6 +157,7 @@ export class PlayerWeapon {
         tip: true,
         max: true,
         bind: W.tipBindTime,
+        chain: W.tipChainTime,
         point: [ex, e.y + e.h / 2],
         dir: f,
       };
@@ -205,6 +206,7 @@ export class PlayerWeapon {
       hitstop: tip ? S.tipHitstop : S.hitstop,
       tip,
       bind: tip ? W.tipBindTime : 0,
+      chain: tip ? W.tipChainTime : 0,
       point,
     };
   }

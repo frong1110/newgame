@@ -30,14 +30,14 @@ export function installBindHooks(player, enemies, effects) {
 }
 
 // 감기: 새로 묶을 때 동시에 묶을 수 있는 수(bindMaxTargets)를 넘으면 남은 시간이 가장 짧은(가장 오래된) 적부터 풀린다
-export function bindWithCap(player, enemies, target, time) {
-  const bound = enemies.filter((e) => e !== target && e.alive && e.bindTimer > 0);
+export function bindWithCap(player, enemies, target, time, chainTime = time) {
+  const bound = enemies.filter((e) => e !== target && e.alive && e.chainTimer > 0);
   while (bound.length >= player.stats.chainWeapon.bindMaxTargets) {
-    const oldest = bound.reduce((a, b) => (a.bindTimer <= b.bindTimer ? a : b));
+    const oldest = bound.reduce((a, b) => (a.chainTimer <= b.chainTimer ? a : b));
     oldest.release();
     bound.splice(bound.indexOf(oldest), 1);
   }
-  target.bind(time, 'player');
+  target.bind(time, 'player', chainTime);
 }
 
 // 감기: 캐릭터와 이어진 사슬이 bindTetherRange 보다 멀어지면 끊어져 속박이 풀린다
@@ -45,7 +45,7 @@ export function updateTethers(player, enemies) {
   const W = player.stats.chainWeapon;
   const [hx, hy] = playerHand(player);
   for (const e of enemies) {
-    if (!e.alive || e.bindTimer <= 0 || e.bindAnchor !== 'player') continue;
+    if (!e.alive || e.chainTimer <= 0 || e.bindAnchor !== 'player') continue;
     const [ex, ey] = center(e);
     if (!player.usesChainWeapon || Math.hypot(ex - hx, ey - hy) > W.bindTetherRange) e.release();
   }
@@ -71,7 +71,7 @@ function drawChainLine(ctx, x0, y0, x1, y1, color, size = 3) {
 
 // 묶인 적의 사슬: 캐릭터(감기) 또는 죽은 적 자리(사슬 감옥)에서 이어지고, 팽팽한 줄이면 묶인 적끼리도 잇는다
 export function drawBindChains(ctx, view, player, enemies, transfers) {
-  const bound = enemies.filter((e) => e.alive && e.bindTimer > 0);
+  const bound = enemies.filter((e) => e.alive && e.chainTimer > 0);
   const [hx, hy] = playerHand(player);
   for (const e of bound) {
     const [ex, ey] = center(e);

@@ -100,6 +100,7 @@
     "minTipExtension": 0.7,
     "tipBonusMultiplier": 1,
     "tipBindTime": 0,
+    "tipChainTime": 0,
     "bindMaxTargets": 1,
     "bindTetherRange": 260,
     "tautEnabled": false,
