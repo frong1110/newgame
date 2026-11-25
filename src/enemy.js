@@ -7,7 +7,7 @@ export class Enemy {
   // 묶인 적 관련 알림 (main.js 가 연결·사슬 감옥 스킬을 처리하려고 채워 넣는다)
   //   onBoundDamaged(enemy, damage): 묶인 적이 피해를 받음
   //   onBoundDied(enemy): 묶인 적이 죽음
-  static hooks = { onBoundDamaged: null, onBoundDied: null };
+  static hooks = { onBoundDied: null };
 
   constructor(type, spawn) {
     this.type = type;
@@ -192,7 +192,6 @@ export class Enemy {
     if (!this.alive || hitId === this.lastHitId) return false;
     this.lastHitId = hitId;
     this.hp -= damage;
-    if (this.bindTimer > 0 && damage > 0) Enemy.hooks.onBoundDamaged?.(this, damage); // 연결
     this.vx = fromDir * knockX;
     this.vy = -knockY;
     this.stunTimer = this.stats.stunTime;

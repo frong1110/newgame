@@ -1,5 +1,5 @@
-// 사슬 무기 결박 갈래 (감기 · 연결 · 사슬 감옥) 의 판 전체 처리와 그리기
-//   - 연결: 묶인 적이 피해를 받으면 그 비율만큼 다른 묶인 적들도 받는다 (Enemy.hooks.onBoundDamaged)
+// 사슬 무기 결박 갈래 (감기 · 팽팽한 줄 · 사슬 감옥) 의 판 전체 처리와 그리기
+//   - 팽팽한 줄·끌어모으기 동작은 bindPull.js, 여기서는 사슬 선 그리기만 한다
 //   - 사슬 감옥: 묶인 적이 죽으면 주변 적들에게 사슬이 옮겨 붙는다 (Enemy.hooks.onBoundDied)
 //   - 감기: 캐릭터와 이어진 사슬이 너무 멀어지면 끊어진다 (updateTethers)
 import { GAME } from './data/index.js';
@@ -9,15 +9,6 @@ const center = (b) => [b.x + b.w / 2, b.y + b.h / 2];
 const playerHand = (player) => [player.x + player.w / 2 + player.facing * player.stats.chainWeapon.pivotForward, player.y + player.h / 2];
 
 export function installBindHooks(player, enemies, effects) {
-  // 연결
-  Enemy.hooks.onBoundDamaged = (src, damage) => {
-    const share = player.usesChainWeapon ? player.stats.chainWeapon.linkShare : 0;
-    if (!(share > 0)) return;
-    for (const e of enemies) {
-      if (e !== src && e.alive && e.bindTimer > 0) e.takeShare(damage * share);
-    }
-  };
-
   // 사슬 감옥: 그 자리에서 prisonRange 안의 가까운 적들에게 옮겨 붙는다
   Enemy.hooks.onBoundDied = (dead) => {
     const W = player.stats.chainWeapon;
@@ -36,6 +27,17 @@ export function installBindHooks(player, enemies, effects) {
       effects.addTransfer(dx, dy, e);
     }
   };
+}
+
+// 감기: 새로 묶을 때 동시에 묶을 수 있는 수(bindMaxTargets)를 넘으면 남은 시간이 가장 짧은(가장 오래된) 적부터 풀린다
+export function bindWithCap(player, enemies, target, time) {
+  const bound = enemies.filter((e) => e !== target && e.alive && e.bindTimer > 0);
+  while (bound.length >= player.stats.chainWeapon.bindMaxTargets) {
+    const oldest = bound.reduce((a, b) => (a.bindTimer <= b.bindTimer ? a : b));
+    oldest.release();
+    bound.splice(bound.indexOf(oldest), 1);
+  }
+  target.bind(time, 'player');
 }
 
 // 감기: 캐릭터와 이어진 사슬이 bindTetherRange 보다 멀어지면 끊어져 속박이 풀린다
@@ -67,7 +69,7 @@ function drawChainLine(ctx, x0, y0, x1, y1, color, size = 3) {
   }
 }
 
-// 묶인 적의 사슬: 캐릭터(감기) 또는 죽은 적 자리(사슬 감옥)에서 이어지고, 연결 스킬이면 묶인 적끼리도 잇는다
+// 묶인 적의 사슬: 캐릭터(감기) 또는 죽은 적 자리(사슬 감옥)에서 이어지고, 팽팽한 줄이면 묶인 적끼리도 잇는다
 export function drawBindChains(ctx, view, player, enemies, transfers) {
   const bound = enemies.filter((e) => e.alive && e.bindTimer > 0);
   const [hx, hy] = playerHand(player);
@@ -82,7 +84,7 @@ export function drawBindChains(ctx, view, player, enemies, transfers) {
       ctx.strokeRect(a.x - view.x - 5, a.y - view.y - 5, 10, 10);
     }
   }
-  if (player.usesChainWeapon && player.stats.chainWeapon.linkShare > 0 && bound.length > 1) {
+  if (player.usesChainWeapon && player.stats.chainWeapon.tautEnabled && bound.length > 1) {
     const sorted = [...bound].sort((a, b) => a.x - b.x);
     for (let i = 1; i < sorted.length; i++) {
       const [x0, y0] = center(sorted[i - 1]), [x1, y1] = center(sorted[i]);
