@@ -134,7 +134,7 @@
         {
           "id": "cw_spin_charge",
           "name": "회전 차지",
-          "description": "X 꾹: 차지·쳐내기, 놓으면 방출. 공격 범위(사슬 길이) +30%",
+          "description": "X 꾹: 차지·쳐내기, 놓으면 방출. 끝부분 판정 범위 +95%",
           "requires": [],
           "pos": [
             2,
@@ -152,9 +152,14 @@
               "value": true
             },
             {
-              "stat": "chainWeapon.lengthMultiplier",
-              "op": "mul",
-              "value": 1.3
+              "stat": "chainWeapon.tipHitMultiplier",
+              "op": "set",
+              "value": 1.95
+            },
+            {
+              "stat": "chainWeapon.weightModelScale",
+              "op": "set",
+              "value": 2.08
             }
           ]
         },
