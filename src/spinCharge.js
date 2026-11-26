@@ -45,6 +45,18 @@ export class PlayerSpin {
     this.chargeLevel = 0;
   }
 
+  // 차징이 끊김(피격·대시·기절·내리꽂기): 차징 중이었다면 차지량·저장한 투사체·회전 스택을 모두 잃고, 다시 시전하면 처음부터 시작한다
+  interruptCharge() {
+    if (this.charging) {
+      this.storedShots = 0;
+      this.spinStacks = 0;
+      this.spinStackTimer = 0;
+      this.spinAngle = 0;
+      this.spinHitCd.clear();
+    }
+    this.cancelCharge();
+  }
+
   // 공격 입력 처리 (회전 차지가 있을 때 updateAttack 대신 입력을 먼저 가른다)
   updateCharge(dt, stunned, enemies) {
     const W = this.weapon;
@@ -57,7 +69,7 @@ export class PlayerSpin {
       if (t - dt <= 0 || !e.alive) this.spinHitCd.delete(e);
       else this.spinHitCd.set(e, t - dt);
     }
-    if (stunned || this.dashTimer > 0 || this.slamState) return this.cancelCharge();
+    if (stunned || this.dashTimer > 0 || this.slamState) return this.interruptCharge();
 
     const down = Input.isDown(ATTACK_KEY);
     if (Input.wasPressed(ATTACK_KEY)) {

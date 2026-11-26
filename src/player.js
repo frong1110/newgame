@@ -138,6 +138,7 @@ export class Player {
     ) this.startSlam();
     if (this.slamState) this.updateSlam(dt, world);
     if (this.isDashing) {
+      this.interruptCharge(); // 대시 중에는 공격 갱신을 건너뛰므로 여기서 차징을 끊는다
       if (this.dashTimer > 0) this.updateDash(dt, world);
       // 대시 중 눌린 점프·공격은 버퍼에 남겨서 대시가 끝나면 이어지게
       if (Input.wasPressed('Space')) this.jumpBufferTimer = C.jumpBuffer;
@@ -229,8 +230,7 @@ export class Player {
     this.attackTimer = 0;
     this.comboTimer = 0;
     this.attackBufferTimer = 0;
-    this.cancelCharge();
-    this.storedShots = 0;
+    this.interruptCharge();
     this.dashTimer = 0;
     this.chain.cancel();
     this.pullChain.cancel();
