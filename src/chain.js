@@ -265,7 +265,7 @@ export class Chain {
     // 적에게 닿으면 붙으면서 피해
     if (enemy && overlaps(expand(p, C.attachDistance), enemy)) {
       const dir = Math.sign(ddx) || p.facing;
-      if (enemy.takeHit(C.damage, dir, C.knockbackX, C.knockbackY, `${this.key}-${this.count}`)) this.hitstop = C.hitstop;
+      if (enemy.takeHit(C.damage * p.chainDamage, dir, C.knockbackX, C.knockbackY, `${this.key}-${this.count}`)) this.hitstop = C.hitstop;
       p.facing = dir;
       p.vx = 0;
       p.vy = -C.attachBounce; // 적에게 붙은 뒤 살짝 떠서 이어서 공격하기 좋게
@@ -334,25 +334,25 @@ export class Chain {
       const throwing = C.onPullArrive === 'throw';
       if (throwing && (this.launchWanted || p.holdingUp)) {
         // 회전 투척 + ↑: 위로 띄운다 (공중 상태 → 내리찍기로 이어 칠 수 있음)
-        enemy.takeHit(C.launchSelfDamage, p.facing, 0, 0, hitId);
+        enemy.takeHit(C.launchSelfDamage * p.chainDamage, p.facing, 0, 0, hitId);
         enemy.launch(C.launchHeight, C.launchHangTime, C.launchGravity);
         this.hitstop = C.throwHitstop;
       } else if (throwing) {
         // 회전 투척: 끌어온 적을 휘둘러 바라보는 쪽으로 던진다. 던진 적도, 날아가다 맞은 적도 피해
         const dir = p.facing;
-        enemy.takeHit(C.throwSelfDamage, dir, 0, 0, hitId);
-        enemy.throwAway(dir, C, hitId);
+        enemy.takeHit(C.throwSelfDamage * p.chainDamage, dir, 0, 0, hitId);
+        enemy.throwAway(dir, C, hitId, p.chainDamage);
         this.hitstop = C.throwHitstop;
       } else {
         const dir = Math.sign(this.hx - cx) || p.facing;
-        if (enemy.takeHit(C.pullDamage, dir, C.pullKnockbackX, C.pullKnockbackY, hitId)) this.hitstop = C.hitstop;
+        if (enemy.takeHit(C.pullDamage * p.chainDamage, dir, C.pullKnockbackX, C.pullKnockbackY, hitId)) this.hitstop = C.hitstop;
         enemy.stunTimer = Math.max(enemy.stunTimer, C.pullStun);
         p.facing = dir;
       }
       this.phase = null;
       this.target = null;
       // 태그 효과 부가 연결 지점: 당기기 도착
-      if (this.key === 'pullChain' && enemy.alive) emitTag('pullArrive', { enemy, damage: p.stats.chainWeapon.combo[0].damage });
+      if (this.key === 'pullChain' && enemy.alive) emitTag('pullArrive', { enemy, damage: p.chainDamage });
       return;
     }
     if (this.timer >= C.pullMaxTime) this.cancel();
@@ -370,12 +370,12 @@ export class Chain {
     const ix = enemy.x + enemy.w / 2;
     const groundY = enemy.y + enemy.h;
     const hitId = `${this.key}-${this.count}-slam`;
-    enemy.takeHit(C.slamDamage, p.facing, 0, C.slamKnockbackY * 0.3, hitId);
+    enemy.takeHit(C.slamDamage * p.chainDamage, p.facing, 0, C.slamKnockbackY * 0.3, hitId);
     const area = { x: ix - C.slamRadiusX, y: groundY - C.slamHeight, w: C.slamRadiusX * 2, h: C.slamHeight + 8 };
     for (const e of enemies) {
       if (e === enemy || !e.alive || !overlaps(area, e)) continue;
       const dir = Math.sign(e.x + e.w / 2 - ix) || p.facing;
-      e.takeHit(C.slamAoEDamage, dir, C.slamKnockbackX, C.slamKnockbackY, `${hitId}-aoe`);
+      e.takeHit(C.slamAoEDamage * p.chainDamage, dir, C.slamKnockbackX, C.slamKnockbackY, `${hitId}-aoe`);
     }
     this.hitstop = C.slamHitstop;
     this.impact = { x: ix, y: groundY, r: C.slamRadiusX, shake: C.slamShake, shakeTime: C.slamShakeTime, waveTime: C.slamWaveTime };

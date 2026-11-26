@@ -113,7 +113,7 @@ export class FlailStorm {
       e.push = null;
       e.release();
       e.held = true;
-      e.takeHit(C.stormDamage, Math.sign(dx) || p.facing, 0, 0, `flail${this.seq}-grab-${this.held.length}-${this.timer.toFixed(3)}`);
+      e.takeHit(C.stormDamage * p.chainDamage, Math.sign(dx) || p.facing, 0, 0, `flail${this.seq}-grab-${this.held.length}-${this.timer.toFixed(3)}`);
       const r = Math.max(35, Math.min(C.stormRadius, Math.hypot(dx, dy / C.stormScaleY)));
       this.held.push({ e, ang: Math.atan2(dy / C.stormScaleY, dx), r, lastX: e.x, lastY: e.y });
       this.hitstop = Math.max(this.hitstop, C.stormHitstop);
@@ -151,8 +151,9 @@ export class FlailStorm {
   release(p, C) {
     const mode = Input.isDown('ArrowUp') ? 'up' : Input.isDown('ArrowDown') ? 'down' : 'forward';
     const g = ++this.seq;
+    const D = p.chainDamage; // 사슬 데미지 단위 (피해 수치는 이 값의 배수)
     const blast = (wall, land, selfDamage, stun) => ({
-      wall, land, selfDamage, stun, radius: C.stormBlastRadius, damage: C.stormBlastDamage,
+      wall, land, selfDamage: selfDamage * D, stun, radius: C.stormBlastRadius, damage: C.stormBlastDamage * D,
       knockX: C.stormBlastKnockbackX, knockY: C.stormBlastKnockbackY,
       shake: C.stormBlastShake, shakeTime: C.stormBlastShakeTime, waveTime: C.stormBlastWaveTime, hitstop: C.stormHitstop,
     });
@@ -160,7 +161,7 @@ export class FlailStorm {
       e.held = false;
       const hitId = `flail${g}-${i}`;
       if (mode === 'up') {
-        e.takeHit(C.launchSelfDamage, p.facing, 0, 0, hitId);
+        e.takeHit(C.launchSelfDamage * D, p.facing, 0, 0, hitId);
         e.launch(C.launchHeight, C.launchHangTime, C.launchGravity);
       } else if (mode === 'down') {
         e.flight = { kind: 'throw', damage: 0, hitId, hangLeft: 0, group: g, ignoreWall: true, blast: blast(false, true, C.stormDownDamage, C.stormDownStun) };
@@ -168,7 +169,7 @@ export class FlailStorm {
         e.vy = C.stormDownSpeed;
       } else {
         e.flight = {
-          kind: 'throw', damage: C.stormForwardDamage, knockbackX: C.stormForwardKnockbackX, knockbackY: C.stormForwardKnockbackY,
+          kind: 'throw', damage: C.stormForwardDamage * D, knockbackX: C.stormForwardKnockbackX, knockbackY: C.stormForwardKnockbackY,
           hitstop: C.stormHitstop, hitId, hangLeft: 0, gravity: C.stormForwardGravity, group: g,
           blast: blast(true, false, C.stormWallDamage, C.stormWallStun),
         };

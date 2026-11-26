@@ -110,12 +110,12 @@ export class TagEffects {
     const [ex, ey] = center(e);
     const around = (r) => this.enemies.filter((o) => o.alive && Math.hypot(center(o)[0] - ex, center(o)[1] - ey) <= r);
     if (this.stage('lightning') >= 2 && e.status.shock > 0) {
-      for (const o of around(TAGS.lightning.burstRadius)) o.takeShare(TAGS.lightning.burstDamage);
+      for (const o of around(TAGS.lightning.burstRadius)) o.takeShare(TAGS.lightning.burstDamage * this.player.chainDamage);
       this.effects.addImpact(ex, ey, TAGS.lightning.burstRadius, 5, 0.15, 0.3);
     }
     if (this.stage('ice') >= 2 && e.status.freeze > 0) {
       for (const o of around(TAGS.ice.shardRadius)) {
-        o.takeShare(TAGS.ice.shardDamage);
+        o.takeShare(TAGS.ice.shardDamage * this.player.chainDamage);
         applySlow(o, TAGS.ice.maxStacks[2], TAGS.ice.slowTime);
       }
       this.effects.addImpact(ex, ey, TAGS.ice.shardRadius, 4, 0.12, 0.3);

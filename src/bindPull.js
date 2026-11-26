@@ -57,9 +57,10 @@ export class BindPull {
       if (!e.alive || e.chainTimer > 0 || this.lineCd.has(e)) continue;
       if (!bound.some((b, i) => i > 0 && this.touches(center(bound[i - 1]), center(b), e, pad))) continue;
       this.lineCd.set(e, W.tautLineTick);
-      e.takeShare(W.tautLineDamage);
+      const D = this.player.chainDamage; // 사슬 데미지 단위
+      e.takeShare(W.tautLineDamage * D);
       if (e.alive && bound.length < W.bindMaxTargets + bindCapBonus(this.player)) e.bind(W.tautLineBindTime);
-      if (e.alive) emitTag('tautLine', { enemy: e, damage: W.combo[0].damage }); // 태그 효과 부가 연결 지점
+      if (e.alive) emitTag('tautLine', { enemy: e, damage: D }); // 태그 효과 부가 연결 지점
     }
   }
 
@@ -100,7 +101,7 @@ export class BindPull {
   collide() {
     const S = this.state, W = this.W;
     for (const e of S.targets) {
-      e.takeHit(W.tautCollideDamage, Math.sign(e.x + e.w / 2 - S.cx) || 1, 0, 0, `bp${++this.seq}`);
+      e.takeHit(W.tautCollideDamage * this.player.chainDamage, Math.sign(e.x + e.w / 2 - S.cx) || 1, 0, 0, `bp${++this.seq}`);
       if (e.alive) { e.stunTimer = Math.max(e.stunTimer, W.tautCollideStun); e.release(); }
     }
     this.effects.addImpact(S.cx, S.cy, 50, 4, 0.15, 0.25);
@@ -111,7 +112,7 @@ export class BindPull {
   // 사슬 감옥: 묶은 수에 비례한 폭발. 반경 안의 모든 적이 맞는다 (죽은 묶인 적은 전이 효과도 발동)
   explode() {
     const S = this.state, W = this.W;
-    const damage = W.prisonBaseDamage + W.prisonDamagePerTarget * (S.count - 1);
+    const damage = (W.prisonBaseDamage + W.prisonDamagePerTarget * (S.count - 1)) * this.player.chainDamage;
     const radius = W.prisonRadiusBase + W.prisonRadiusPerTarget * S.count;
     for (const e of this.enemies) {
       if (!e.alive) continue;

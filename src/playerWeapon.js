@@ -10,6 +10,13 @@ export class PlayerWeapon {
     return this.usesChainWeapon ? this.stats.chainWeapon : this.stats.attack;
   }
 
+  // 사슬 데미지 단위 = 사슬 1타의 몸통 피해 (chainWeapon.combo[0].damage).
+  // 스킬 피해 수치(내리찍기·던지기·결박·철퇴 폭풍·쳐내기·대시 내리꽂기 등)는 이 값의 배수로 데이터에 적고, 쓸 때 곱해서
+  // 사슬 데미지를 바꾸면 스킬 피해도 같은 비율로 따라가게 한다
+  get chainDamage() {
+    return this.stats.chainWeapon.combo[0].damage;
+  }
+
   get usesChainWeapon() {
     return this.stats.weapon === 'chain';
   }
