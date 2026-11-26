@@ -174,7 +174,8 @@ export class Enemy {
   groundAhead(world, dir = this.dir) {
     const T = GAME.tileSize;
     const footX = dir > 0 ? this.x + this.w + 1 : this.x - 1;
-    return world.isSolid(Math.floor(footX / T), Math.floor((this.y + this.h + 1) / T));
+    const tx = Math.floor(footX / T), ty = Math.floor((this.y + this.h + 1) / T);
+    return world.isSolid(tx, ty) || !!world.isOneWay?.(tx, ty);
   }
 
   // 회전 투척: dir 쪽으로 포물선을 그리며 날아간다. C = 던진 사슬의 수치
