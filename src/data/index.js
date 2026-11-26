@@ -7,6 +7,7 @@ import tags from './tags.json';
 import difficulty from './difficulty.json';
 import level1 from './levels/level1.txt?raw';
 import bind from './levels/bind.txt?raw';
+import stage1 from './levels/stage1.txt?raw';
 
 export const PLAYER = player;
 export const GAME = game;
@@ -17,4 +18,5 @@ export const DIFFICULTY = difficulty; // 난이도 단계(level)와 단계별 �
 export const LEVELS = {
   level1: level1.trim().split(/\r?\n/), // 기본 시험장 (회귀 재생 기준: ?level=level1)
   bind: bind.trim().split(/\r?\n/), // 결박 갈래 시험장 (기본 맵)
+  stage1: stage1.trim().split(/\r?\n/), // 문이 있는 스테이지 (?level=stage1). '=' 한 방향 발판, 'D' 문
 };

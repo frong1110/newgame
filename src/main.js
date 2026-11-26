@@ -3,6 +3,7 @@
 import { GAME, LEVELS, PLAYER, SKILLS, DIFFICULTY } from './data/index.js';
 import { Input } from './input.js';
 import { World } from './world.js';
+import { overlaps } from './physics.js';
 import { Player } from './player.js';
 import { Enemy } from './enemy.js';
 import { SkillTree } from './skills.js';
@@ -132,7 +133,21 @@ function updateChoice() {
   if (['Enter', 'Space', 'KeyX'].some((k) => Input.wasPressed(k))) pickSkill(selected);
 }
 
+// 문이 있는 맵: 적을 모두 잡으면 문이 열리고, 열린 문에 닿으면 다음 방
+function doorsOpen() { return enemies.every((e) => !e.alive); }
+function updateDoors() {
+  if (!doorsOpen()) return;
+  const b = { x: player.x, y: player.y, w: player.w, h: player.h };
+  if (world.doors.some((d) => overlaps(b, d))) {
+    nextRoom();
+    player.respawn(world.spawn.x, world.spawn.y);
+    projectiles.list = [];
+    bindPull.state = null;
+  }
+}
+
 function updateRoomClear(dt) {
+  if (world.doors.length) return updateDoors();
   if (clearTimer < 0) {
     if (enemies.every((e) => !e.alive)) clearTimer = SKILLS.roomClearDelay;
     return;
@@ -209,7 +224,7 @@ function render() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   const [sx, sy] = effects.shakeOffset();
   const view = { x: Math.round(cam.x + sx), y: Math.round(cam.y + sy), w: cam.w, h: cam.h };
-  world.draw(ctx, view);
+  world.draw(ctx, view, world.doors.length && doorsOpen());
   effects.drawUnder(ctx, view);
   for (const e of enemies) e.draw(ctx, view);
   drawBindChains(ctx, view, player, enemies, effects.transfers);

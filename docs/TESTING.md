@@ -162,3 +162,6 @@ node tests/compare.cjs /tmp/base.json /tmp/after.json
 - [ ] 콘솔 에러 없음
 - [ ] `npm run build` 성공, 결과물에 `__game` 이 없음 (`grep -c __game dist/assets/*.js` → 0)
 - [ ] 배포 후: Actions 의 `Deploy to GitHub Pages` 성공, 화면 위 버전이 올린 버전과 같음 (예전 화면이면 강력 새로고침)
+
+## 문·한 방향 발판 (`?level=stage1`)
+- 발판(`=`): 아래에서 점프하면 통과하고 위에 착지(발바닥 y = 발판 윗면). 문(`D`): 적이 남아 있으면 닫힘(회색), 전멸하면 하늘색으로 열리고 닿으면 시작 위치로 이동·적 재배치.

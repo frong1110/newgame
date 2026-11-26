@@ -6,9 +6,10 @@ import { GAME } from './data/index.js';
 export function moveAndCollide(body, world, dt) {
   body.x += body.vx * dt;
   body.hitWall = resolveX(body, world);
+  const prevBottom = body.y + body.h;
   body.y += body.vy * dt;
   body.onGround = false;
-  resolveY(body, world);
+  resolveY(body, world, prevBottom);
 }
 
 function resolveX(b, world) {
@@ -29,7 +30,7 @@ function resolveX(b, world) {
   return false;
 }
 
-function resolveY(b, world) {
+function resolveY(b, world, prevBottom) {
   const T = GAME.tileSize;
   const left = Math.floor(b.x / T);
   const right = Math.floor((b.x + b.w - 0.01) / T);
@@ -37,6 +38,8 @@ function resolveY(b, world) {
     const ty = Math.floor((b.y + b.h) / T);
     for (let tx = left; tx <= right; tx++) {
       if (world.isSolid(tx, ty)) { b.y = ty * T - b.h; b.vy = 0; b.onGround = true; return; }
+      // 한 방향 발판: 이전 프레임 발바닥이 발판 윗면 위에 있었을 때만 선다
+      if (world.isOneWay?.(tx, ty) && prevBottom <= ty * T + 0.01) { b.y = ty * T - b.h; b.vy = 0; b.onGround = true; return; }
     }
   } else if (b.vy < 0) {
     const ty = Math.floor(b.y / T);
