@@ -31,6 +31,7 @@ export function setupTouchControls() {
     </div>
     <div class="topbar">
       <button class="small panel-only" data-key="KeyQ">무기 바꾸기</button>
+      <button class="small panel-only" data-key="KeyT">태그 페이지</button>
       <button class="small" data-key="KeyK">스킬</button>
       <button class="small" data-key="KeyR">처음부터</button>
       <button class="small" data-fullscreen>전체화면</button>

@@ -47,7 +47,7 @@ export class Projectiles {
           if (!e.alive || !overlaps(e, box)) continue;
           const W = player.stats.chainWeapon;
           e.takeHit(p.damage, Math.sign(p.vx) || 1, W.deflectKnockbackX, W.deflectKnockbackY, p.id);
-          emitTag('reflectHit', { enemy: e, source: 'weapon', point: [p.x, p.y] });
+          emitTag('reflectHit', { enemy: e, damage: p.damage, point: [p.x, p.y] });
           hitstop.t = Math.max(hitstop.t, 0.04);
           hit = true;
           break;

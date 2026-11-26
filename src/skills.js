@@ -75,9 +75,9 @@ export class SkillTree {
     return this.owned.has(id) ? this.unlearn(id) : this.learnWithRequirements(id);
   }
 
-  // 트리 화면에 그리는 순서대로 나열한 스킬 id
-  orderedIds() {
-    return Object.values(this.trees).flatMap((t) => t.skills.map((s) => s.id));
+  // 트리 화면에 그리는 순서대로 나열한 스킬 id (page: 0 무기·이동 트리, 1 공용 증강 태그)
+  orderedIds(page = 0) {
+    return Object.values(this.trees).filter((t) => (t.page ?? 0) === page).flatMap((t) => t.skills.map((s) => s.id));
   }
 
   // 배울 수 있는 스킬 중 무작위 후보 (최대 choiceCount 개)

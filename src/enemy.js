@@ -1,13 +1,15 @@
 // 테스트용 적. 좌우로 순찰하다가 벽이나 낭떠러지에서 돌아선다.
 // 맞으면 넉백·경직, 체력이 0이 되면 사라진다. (respawnTime > 0 이면 그 시간 뒤 다시 나타남)
-import { ENEMIES, GAME } from './data/index.js';
+import { ENEMIES, GAME, TAGS } from './data/index.js';
 import { moveAndCollide, approach } from './physics.js';
+import { newStatus, updateStatus, speedMul, isFrozen } from './status.js';
 
 export class Enemy {
   // 묶인 적 관련 알림 (main.js 가 연결·사슬 감옥 스킬을 처리하려고 채워 넣는다)
-  //   onBoundDamaged(enemy, damage): 묶인 적이 피해를 받음
-  //   onBoundDied(enemy): 묶인 적이 죽음
-  static hooks = { onBoundDied: null };
+  //   onBoundDied(enemy): 묶인 적이 죽음 (사슬 감옥·구속 태그 전이)
+  //   onDied(enemy): 적이 죽음 (태그 효과: 번개 폭발·빙결 파편). 상태이상은 아직 남아 있음
+  //   damageMul(enemy): takeHit 피해 배율 (빙결·묶인 적이 받는 피해 증가 태그)
+  static hooks = { onBoundDied: null, onDied: null, damageMul: null };
 
   constructor(type, spawn) {
     this.type = type;
@@ -27,6 +29,8 @@ export class Enemy {
     this.hp = this.stats.maxHp;
     this.alive = true;
     this.stunTimer = 0;
+    this.status = newStatus(); // 상태이상 (status.js): 화상·둔화·빙결·감전·도주
+    this.boss = this.stats.boss ?? false; // 보스는 스턴·빙결 면역, 최대 체력 비례 피해 절반, 붙잡기 면역
     this.flashTimer = 0;
     this.respawnTimer = 0;
     this.lastHitId = -1; // 같은 공격에 여러 번 맞지 않도록
@@ -56,6 +60,8 @@ export class Enemy {
     }
 
     this.flashTimer -= dt;
+    updateStatus(this, dt);
+    if (!this.alive) return;
     if (this.held) {
       // 철퇴 폭풍: 사슬 끝에 매달려 돌아가는 중. 위치는 chain.js 가 정한다
       this.vx = 0;
@@ -129,9 +135,12 @@ export class Enemy {
     }
     if (this.stunTimer > 0) {
       this.stunTimer -= dt;
-      this.vx = this.bindTimer > 0 ? 0 : approach(this.vx, 0, S.knockbackDecel * dt);
+      this.vx = this.bindTimer > 0 || isFrozen(this) ? 0 : approach(this.vx, 0, S.knockbackDecel * dt);
+    } else if (this.status.flee > 0) {
+      this.dir = this.status.fleeDir; // 도주: 피해 온 반대쪽으로 빠르게
+      this.vx = this.dir * S.moveSpeed * TAGS.execute.fleeSpeedMul * speedMul(this);
     } else {
-      this.vx = this.dir * S.moveSpeed;
+      this.vx = this.dir * S.moveSpeed * speedMul(this);
     }
 
     this.vy = Math.min(this.vy + S.gravity * dt, S.maxFallSpeed);
@@ -206,6 +215,7 @@ export class Enemy {
   takeHit(damage, fromDir, knockX, knockY, hitId) {
     if (!this.alive || hitId === this.lastHitId) return false;
     this.lastHitId = hitId;
+    damage *= Enemy.hooks.damageMul?.(this) ?? 1;
     this.hp -= damage;
     this.vx = fromDir * knockX;
     this.vy = -knockY;
@@ -241,6 +251,8 @@ export class Enemy {
     const wasBound = this.chainTimer > 0;
     this.alive = false;
     this.release();
+    Enemy.hooks.onDied?.(this);
+    this.status = newStatus();
     this.respawnTimer = this.stats.respawnTime;
     if (wasBound) Enemy.hooks.onBoundDied?.(this); // 사슬 감옥
   }
@@ -290,12 +302,17 @@ export class Enemy {
       ctx.closePath();
       ctx.fill();
     }
-    // 체력 칸
-    const pip = 6, gap = 2;
-    const total = this.stats.maxHp * (pip + gap) - gap;
-    for (let i = 0; i < this.stats.maxHp; i++) {
-      ctx.fillStyle = i < this.hp ? '#2ecc71' : 'rgba(255,255,255,0.25)';
-      ctx.fillRect(px + this.w / 2 - total / 2 + i * (pip + gap), py - 9, pip, 4);
-    }
+    // 체력 막대 + 상태이상 표시
+    const bw = 40, bx = px + this.w / 2 - bw / 2;
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.fillRect(bx, py - 9, bw, 4);
+    ctx.fillStyle = '#2ecc71';
+    ctx.fillRect(bx, py - 9, bw * Math.max(0, this.hp) / this.stats.maxHp, 4);
+    const s = this.status;
+    const marks = [[s.burn, '#ff8a3d'], [s.slowStacks > 0, '#78d6ff'], [s.freeze > 0, '#ffffff'], [s.shock > 0, '#ffe14d'], [s.flee > 0, '#c8a2ff']];
+    marks.filter(([on]) => on).forEach(([, c], i) => {
+      ctx.fillStyle = c;
+      ctx.fillRect(bx + i * 8, py - 16, 6, 5);
+    });
   }
 }

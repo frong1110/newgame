@@ -4,25 +4,32 @@
 //   - 감기: 캐릭터와 이어진 사슬이 너무 멀어지면 끊어진다 (updateTethers)
 import { GAME } from './data/index.js';
 import { Enemy } from './enemy.js';
+import { TAGS } from './data/index.js';
+import { tagStage, bindCapBonus, bindTimeBonus } from './tags.js';
 
 const center = (b) => [b.x + b.w / 2, b.y + b.h / 2];
 const playerHand = (player) => [player.x + player.w / 2 + player.facing * player.stats.chainWeapon.pivotForward, player.y + player.h / 2];
 
 export function installBindHooks(player, enemies, effects) {
-  // 사슬 감옥: 그 자리에서 prisonRange 안의 가까운 적들에게 옮겨 붙는다
+  // 사슬 감옥(스킬) 또는 구속 태그 5개: 그 자리에서 가까운 적들에게 속박이 옮겨 붙는다 (둘 다 있으면 더 넓은 쪽)
   Enemy.hooks.onBoundDied = (dead) => {
     const W = player.stats.chainWeapon;
-    if (!player.usesChainWeapon || !W.prisonEnabled) return;
+    if (!player.usesChainWeapon) return;
+    const prison = W.prisonEnabled, tag = tagStage(player, 'bind') >= 2;
+    if (!prison && !tag) return;
+    const maxTargets = Math.max(prison ? W.prisonMaxTargets : 0, tag ? TAGS.bind.transferTargets : 0);
+    const range = Math.max(prison ? W.prisonRange : 0, tag ? TAGS.bind.transferRange : 0);
+    const bindTime = Math.max(prison ? W.prisonBindTime : 0, tag ? TAGS.bind.transferBindTime : 0);
     const [dx, dy] = center(dead);
     const targets = enemies
       .filter((e) => e !== dead && e.alive && e.hp > 0)
       .map((e) => [e, Math.hypot(center(e)[0] - dx, center(e)[1] - dy)])
-      .filter(([, d]) => d <= W.prisonRange)
+      .filter(([, d]) => d <= range)
       .sort((a, b) => a[1] - b[1])
-      .slice(0, W.prisonMaxTargets)
+      .slice(0, maxTargets)
       .map(([e]) => e);
     for (const e of targets) {
-      e.bind(W.prisonBindTime, { x: dx, y: dy });
+      e.bind(bindTime, { x: dx, y: dy });
       e.vx = 0;
       effects.addTransfer(dx, dy, e);
     }
@@ -32,12 +39,14 @@ export function installBindHooks(player, enemies, effects) {
 // 감기: 새로 묶을 때 동시에 묶을 수 있는 수(bindMaxTargets)를 넘으면 남은 시간이 가장 짧은(가장 오래된) 적부터 풀린다
 export function bindWithCap(player, enemies, target, time, chainTime = time) {
   const bound = enemies.filter((e) => e !== target && e.alive && e.chainTimer > 0);
-  while (bound.length >= player.stats.chainWeapon.bindMaxTargets) {
+  const cap = player.stats.chainWeapon.bindMaxTargets + bindCapBonus(player); // 구속 태그: 상한 증가
+  while (bound.length >= cap) {
     const oldest = bound.reduce((a, b) => (a.chainTimer <= b.chainTimer ? a : b));
     oldest.release();
     bound.splice(bound.indexOf(oldest), 1);
   }
-  target.bind(time, 'player', chainTime);
+  const bonus = bindTimeBonus(player); // 구속 태그 3개: 속박 +0.5초
+  target.bind(time + bonus, 'player', chainTime + bonus);
 }
 
 // 감기: 캐릭터와 이어진 사슬이 bindTetherRange 보다 멀어지면 끊어져 속박이 풀린다

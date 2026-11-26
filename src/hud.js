@@ -1,3 +1,5 @@
+import { TAG_NAMES } from './tags.js';
+
 // 화면 글자: 왼쪽 위 디버그 정보, 오른쪽 위 보유 스킬 목록, 위쪽 가운데 버전
 export function drawHUD(ctx, canvas, { player, enemies, skillTree, room, isTouch }) {
   ctx.fillStyle = 'rgba(255,255,255,0.8)';
@@ -10,6 +12,9 @@ export function drawHUD(ctx, canvas, { player, enemies, skillTree, room, isTouch
   ctx.fillText(`${player.usesChain ? 'chain' : 'dash'}: ${player.isDashing ? 'GO' : player.chain.active ? player.chain.phase : dashReady ? 'ready' : '...'}${player.dodgeTimer > 0 ? ' (무적)' : ''}`, 12, 76);
   if (player.chargeOn) ctx.fillText(`회전: 차지 ${Math.round(player.chargeLevel * 100)}%${player.weapon.storeEnabled ? `  저장 ${player.storedShots}/${player.weapon.storeMax}` : ''}${player.stormOn ? `  스택 ${player.spinStacks}/${player.weapon.stormMaxStacks}${player.stormMaxed ? ' MAX' : ''}` : ''}`, 12, 112);
   ctx.fillText(`room: ${room}   enemies: ${enemies.filter((e) => e.alive).length}/${enemies.length}`, 12, 94);
+
+  const tg = player.stats.tags;
+  if (tg && Object.values(tg).some((n) => n > 0)) ctx.fillText(`태그: ${Object.entries(tg).filter(([, n]) => n > 0).map(([k, n]) => `${TAG_NAMES[k]}${n}`).join(' ')}`, 12, 130);
 
   const owned = [...skillTree.owned].map((id) => skillTree.byId[id].name);
   ctx.textAlign = 'right';

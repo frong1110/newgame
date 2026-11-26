@@ -1,7 +1,7 @@
 // 결박 갈래 2·3단계: 묶인 적들 사이의 팽팽한 줄과, C 로 묶인 적을 한 점에 끌어모으는 동작
 //   팽팽한 줄: 묶인 적들 사이 사슬 선에 닿은 다른 적은 피해와 속박. 묶인 적이 2명 이상일 때 C → 서로를 향해 날아가 충돌(피해·기절)
 //   사슬 감옥: 같은 C 가 충돌 대신 한 점으로 끌어모아 조인 뒤 폭발 (묶은 수가 많을수록 피해·반경이 커짐)
-import { overlaps } from './physics.js';
+import { emitTag, bindCapBonus } from './tags.js';
 
 const center = (b) => [b.x + b.w / 2, b.y + b.h / 2];
 const easeOut = (k) => 1 - (1 - k) * (1 - k);
@@ -58,7 +58,8 @@ export class BindPull {
       if (!bound.some((b, i) => i > 0 && this.touches(center(bound[i - 1]), center(b), e, pad))) continue;
       this.lineCd.set(e, W.tautLineTick);
       e.takeShare(W.tautLineDamage);
-      if (e.alive && bound.length < W.bindMaxTargets) e.bind(W.tautLineBindTime);
+      if (e.alive && bound.length < W.bindMaxTargets + bindCapBonus(this.player)) e.bind(W.tautLineBindTime);
+      if (e.alive) emitTag('tautLine', { enemy: e, damage: W.combo[0].damage }); // 태그 효과 부가 연결 지점
     }
   }
 

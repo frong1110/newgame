@@ -14,6 +14,7 @@ import { resolveCombat } from './combat.js';
 import { installBindHooks, updateTethers, drawBindChains } from './bindChains.js';
 import { BindPull } from './bindPull.js';
 import { Projectiles } from './projectiles.js';
+import { TagEffects } from './tagEffects.js';
 import { drawHUD, drawVersion } from './hud.js';
 
 const VERSION = __APP_VERSION__; // package.json 의 version (vite.config.js 에서 넣어 줌)
@@ -40,6 +41,7 @@ let last = performance.now();
 const hitstop = { t: 0 }; // 타격 순간 잠깐 멈추는 연출 (combat.js 가 갱신)
 const bindPull = new BindPull(player, enemies, effects, hitstop); // 결박 갈래: 팽팽한 줄·끌어모으기
 player.bindPull = bindPull;
+const tagEffects = new TagEffects(player, enemies, effects, hitstop); // 태그 공명 효과 (번개·불·얼음·구속·처형)
 
 // 게임 모드: 'play' | 'choice'(방 클리어 후 스킬 고르기) | 'tree'(스킬 트리 보기)
 let mode = 'play';
@@ -48,6 +50,7 @@ let clearTimer = -1; // 적을 모두 처치한 뒤 선택 창이 뜨기까지 �
 let choices = [];
 let selected = 0;
 let treeCursor = 0; // 스킬 트리 화면에서 키보드로 고른 스킬 순서
+let treePage = 0; // 스킬 트리 화면 페이지 (0 무기·이동 트리, 1 공용 증강 태그). T 로 바꾼다
 let pendingClick = null; // 캔버스 좌표로 바꾼 마우스 클릭
 
 canvas.addEventListener('click', (e) => {
@@ -63,7 +66,11 @@ function applySkills() {
 
 // 스킬 트리 화면 (테스트용): 클릭 또는 ↑↓ + Enter 로 배우기/해제, Q 로 무기 바꾸기
 function updateTree() {
-  const ids = skillTree.orderedIds();
+  if (Input.wasPressed('KeyT')) {
+    treePage = 1 - treePage;
+    treeCursor = 0;
+  }
+  const ids = skillTree.orderedIds(treePage);
   if (Input.wasPressed('ArrowDown') || Input.wasPressed('ArrowRight')) treeCursor = (treeCursor + 1) % ids.length;
   if (Input.wasPressed('ArrowUp') || Input.wasPressed('ArrowLeft')) treeCursor = (treeCursor + ids.length - 1) % ids.length;
   if (['Enter', 'Space', 'KeyX'].some((k) => Input.wasPressed(k))) {
@@ -78,7 +85,7 @@ function updateTree() {
     applySkills();
   }
   if (pendingClick) {
-    const id = hitTestTree(skillTree, pendingClick.x, pendingClick.y);
+    const id = hitTestTree(skillTree, pendingClick.x, pendingClick.y, treePage);
     if (id) {
       treeCursor = ids.indexOf(id);
       skillTree.toggle(id);
@@ -164,6 +171,7 @@ function update(dt) {
   for (const e of enemies) e.update(dt, world);
   if (Input.wasPressed('KeyP')) projectiles.fireTest(player, enemies); // 테스트용 투사체
   bindPull.update(dt);
+  tagEffects.update(dt);
   projectiles.update(dt, player, enemies, world, hitstop);
   resolveCombat(player, enemies, effects, hitstop);
   updateRoomClear(dt);
@@ -212,7 +220,7 @@ function render() {
 function renderOverlay() {
   if (isTouch) setTouchPanelOpen(mode !== 'play');
   if (mode === 'choice') drawChoicePanel(ctx, choices, selected, skillTree, room);
-  else if (mode === 'tree') drawTreePanel(ctx, skillTree, skillTree.orderedIds()[treeCursor]);
+  else if (mode === 'tree') drawTreePanel(ctx, skillTree, skillTree.orderedIds(treePage)[treeCursor], treePage);
 }
 
 let devPaused = false; // 개발 전용: 자동 테스트가 프레임을 직접 진행시킬 때 실시간 루프를 멈춘다
@@ -237,7 +245,7 @@ function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 // 개발 서버에서만 디버깅/자동 테스트용으로 상태를 노출 (배포 빌드에는 포함되지 않음)
 if (import.meta.env.DEV) {
   window.__game = {
-    playSfx, player, enemies, world, skillTree, Input, projectiles, bindPull,
+    playSfx, player, enemies, world, skillTree, Input, projectiles, bindPull, tagEffects,
     get mode() { return mode; }, get room() { return room; }, get choices() { return choices; },
     get hitstop() { return hitstop.t; },
     // 자동 테스트용: 실시간 루프를 멈추고 고정 시간 간격으로 n 번 진행 (같은 입력이면 항상 같은 결과)

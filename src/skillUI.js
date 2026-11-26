@@ -59,17 +59,20 @@ export function drawChoicePanel(ctx, choices, selected, skillTree, room) {
 }
 
 // 트리 화면의 노드 위치 계산 (그리기와 클릭 판정이 같이 쓴다). 트리는 가로로 나란히 놓는다
-const NODE_W = 196, NODE_H = 86, COL_GAP = 16, ROW_GAP = 22, TREE_GAP = 44, TOP = 168;
-export function treeLayout(skillTree) {
-  const trees = Object.values(skillTree.trees);
+const NODE_W_MAX = 196, NODE_H = 86, COL_GAP = 16, ROW_GAP = 22, TREE_GAP = 44, TOP = 168;
+export function treeLayout(skillTree, page = 0) {
+  const trees = Object.values(skillTree.trees).filter((t) => (t.page ?? 0) === page);
   const colsOf = (t) => Math.max(...t.skills.map((s) => s.pos[0])) + 1;
+  // 칸이 많은 페이지(태그 5열)는 화면에 맞게 노드 폭을 줄인다
+  const totalCols = trees.reduce((sum, t) => sum + colsOf(t), 0);
+  const NODE_W = Math.min(NODE_W_MAX, Math.floor((W - 40 - (totalCols - trees.length) * COL_GAP - (trees.length - 1) * TREE_GAP) / totalCols));
   const widthOf = (t) => colsOf(t) * NODE_W + (colsOf(t) - 1) * COL_GAP;
   const total = trees.reduce((sum, t) => sum + widthOf(t), 0) + (trees.length - 1) * TREE_GAP;
   const headers = [];
   const nodes = [];
   let left = W / 2 - total / 2;
   for (const tree of trees) {
-    headers.push({ name: tree.name, x: left, w: widthOf(tree), branches: tree.branches });
+    headers.push({ name: tree.name, x: left, w: widthOf(tree), branches: tree.branches, nodeW: NODE_W });
     for (const s of tree.skills) {
       nodes.push({ skill: s, x: left + s.pos[0] * (NODE_W + COL_GAP), y: TOP + s.pos[1] * (NODE_H + ROW_GAP), w: NODE_W, h: NODE_H });
     }
@@ -79,24 +82,25 @@ export function treeLayout(skillTree) {
 }
 
 // 캔버스 좌표 (x, y) 에 있는 스킬 id (없으면 null)
-export function hitTestTree(skillTree, x, y) {
-  const n = treeLayout(skillTree).nodes.find((n) => x >= n.x && x < n.x + n.w && y >= n.y && y < n.y + n.h);
+export function hitTestTree(skillTree, x, y, page = 0) {
+  const n = treeLayout(skillTree, page).nodes.find((n) => x >= n.x && x < n.x + n.w && y >= n.y && y < n.y + n.h);
   return n ? n.skill.id : null;
 }
 
-export function drawTreePanel(ctx, skillTree, cursorId) {
+export function drawTreePanel(ctx, skillTree, cursorId, page = 0) {
   dim(ctx, 0.85);
   text(ctx, '스킬 트리', W / 2, 46, { size: 26, bold: true, align: 'center' });
   text(ctx, '테스트용: 스킬을 클릭하거나 ↑↓ + Enter 로 배우기 / 해제 · R 초기화', W / 2, 72, { size: 13, color: '#8fa3bb', align: 'center' });
   const weaponName = skillTree.weapon === 'chain' ? '사슬' : '검';
   text(ctx, `주 무기: ${weaponName}  (Q 로 바꾸기, 테스트용)`, W / 2, 96, { size: 14, color: '#ffcc4d', align: 'center' });
 
-  const { headers, nodes } = treeLayout(skillTree);
+  const { headers, nodes } = treeLayout(skillTree, page);
+  text(ctx, `T: ${page === 0 ? '공용 증강(태그) 페이지로' : '무기·이동 트리로'}`, W - 20, 46, { size: 13, color: '#78d6ff', align: 'right' });
   const rectOf = Object.fromEntries(nodes.map((n) => [n.skill.id, n]));
   for (const h of headers) {
-    text(ctx, `${h.name} 트리`, h.x, 128, { size: 17, bold: true, color: '#78d6ff' });
+    text(ctx, h.name.includes('트리') ? h.name : `${h.name} 트리`, h.x, 128, { size: 17, bold: true, color: '#78d6ff' });
     (h.branches || []).forEach((b, i) =>
-      text(ctx, b, h.x + i * (NODE_W + COL_GAP) + NODE_W / 2, 152, { size: 13, color: '#8fa3bb', align: 'center' }),
+      text(ctx, b, h.x + i * (h.nodeW + COL_GAP) + h.nodeW / 2, 152, { size: 13, color: '#8fa3bb', align: 'center' }),
     );
   }
 

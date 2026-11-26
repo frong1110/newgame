@@ -69,11 +69,16 @@ export function resolveCombat(player, enemies, effects, hitstop) {
     const hit = player.attackHitTest(e);
     if (hit && e.takeHit(hit.damage, hit.dir ?? player.facing, hit.knockbackX, hit.knockbackY, player.attackId)) {
       hitstop.t = hit.hitstop;
+      if (player.execBuffTimer > 0) {
+        player.execBuffSwing = player.attackId; // 처형 3단계: 이번 휘두르기 전체가 강화, 다음 휘두르기부터는 소모됨
+        player.execBuffTimer = 0;
+      }
       if (hit.tip) {
         effects.addTipHit(hit.point[0], hit.point[1]);
         playSfx('tipHit');
         if (hit.bind > 0) bindWithCap(player, enemies, e, hit.bind, hit.chain); // 감기: 캐릭터와 사슬로 이어 묶음 (동시에 bindMaxTargets 명까지)
-        if (hit.max) emitTag('releaseHit', { enemy: e, source: 'weapon', point: hit.point }); // 채찍 폭풍: 공용 증강 태그 효과 연결
+        // 태그 효과 연결 지점: 휘두르기 끝부분 적중(채찍 폭풍 최대 스택 방출은 releaseHit)
+        if (player.usesChainWeapon) emitTag(hit.max ? 'releaseHit' : 'tipHit', { enemy: e, damage: hit.damage, point: hit.point });
       }
     }
     // 던져져 날아가는 적(공중 상태) → 다른 적 (회전 투척). 띄워진 적은 피해 없음
