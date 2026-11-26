@@ -154,8 +154,8 @@ export class Enemy {
     this.vy = Math.min(this.vy + S.gravity * dt, S.maxFallSpeed);
     moveAndCollide(this, world, dt);
 
-    if (this.stunTimer <= 0 && this.onGround && this.ai?.state !== 'charge' && this.ai?.state !== 'windup') {
-      if (this.hitWall || !this.groundAhead(world)) this.dir *= -1; // 벽·낭떠러지에서 돌아섬 (돌격 준비·돌진 중에는 방향 유지)
+    if (this.stunTimer <= 0 && this.onGround && !this.ai?.holdsFacing) {
+      if (this.hitWall || !this.groundAhead(world)) this.dir *= -1; // 벽·낭떠러지에서 돌아섬 (돌격 준비·돌진·근접 휘두르는 중에는 방향 유지)
     }
 
     if (this.y > world.pixelHeight + GAME.fallRespawnMargin) this.die();
