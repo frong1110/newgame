@@ -98,16 +98,19 @@ export class PlayerWeapon {
 
   // 분동 조율: 앞쪽 최대 사거리 안에서 가장 가까운 적까지의 거리에 맞춰 이번 타의 사슬 길이 배율을 정한다.
   // 사슬은 뻗어 나가며 적의 앞쪽 끝에 먼저 닿으므로, 끝부분 구간의 가운데를 '적의 앞쪽 끝 + tuneAimInset' 에 맞춘다
-  // (처음 닿는 순간 분동이 닿게). tuneStrength 만큼만 보정하고, 적이 없으면 1(기본 길이)
+  // (처음 닿는 순간 분동이 닿게). tuneStrength 만큼만 보정하고, 적이 없으면 방출 길이 배율(chargeLengthMul)만 적용
+  // 방출 사거리 +30%(chargeLengthMul)는 방출 휘두르기에만 적용된다 (기본 공격·탭 휘두르기는 원래 길이)
   tuneSwingLength(enemies) {
     const W = this.weapon;
     const base = this.step.length * W.lengthMultiplier;
+    const cm = W.chargeLengthMul; // 방출 길이 배율
+    const top = base * cm; // 방출 길이의 기준 (보정 한도는 이 길이에 곱한다)
     // 휘두르며 앞으로 내딛는 거리만큼 미리 앞에서 잰다
     const S = this.step;
     const lunge = S.lungeSpeed * S.lungeTime * (this.onGround ? 1 : W.airLungeMultiplier);
     const pivotX = this.x + this.w / 2 + this.facing * (W.pivotForward + lunge);
     const pivotY = this.y + this.h / 2;
-    const maxReach = base * W.tuneMaxLengthMul * W.arcScaleX;
+    const maxReach = top * W.tuneMaxLengthMul * W.arcScaleX;
     let bestD = Infinity;
     for (const e of enemies) {
       if (!e.alive) continue;
@@ -118,11 +121,11 @@ export class PlayerWeapon {
     }
     this.tuneTargetDistance = Number.isFinite(bestD) ? bestD : null;
     this.swingTuned = Number.isFinite(bestD);
-    if (!this.swingTuned) return 1;
+    if (!this.swingTuned) return cm;
     const tipMid = 1 - this.tipFractionEffective / 2;
     const ideal = bestD / (W.arcScaleX * tipMid);
-    const clamped = Math.max(base * W.tuneMinLengthMul, Math.min(base * W.tuneMaxLengthMul, ideal));
-    return (base + (clamped - base) * W.tuneStrength) / base;
+    const clamped = Math.max(top * W.tuneMinLengthMul, Math.min(top * W.tuneMaxLengthMul, ideal));
+    return (top + (clamped - top) * W.tuneStrength) / base;
   }
 
   // 사슬 휘두르기 궤적의 점: 플레이어 앞쪽 축을 중심으로, 가로·세로 배율을 준 타원 위
