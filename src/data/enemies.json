@@ -10,7 +10,8 @@
     "stunTime": 0.35,
     "hitFlashTime": 0.1,
     "respawnTime": 0,
-    "thrownGravity": 700
+    "thrownGravity": 700,
+    "bindCooldown": 1.5
   },
   "charger": {
     "width": 30,
@@ -48,6 +49,7 @@
       "meleeActive": 0.12,
       "meleeRecover": 0.53,
       "meleeTimeVariance": 0.2
-    }
+    },
+    "bindCooldown": 1.5
   }
 }

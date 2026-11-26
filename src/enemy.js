@@ -40,6 +40,7 @@ export class Enemy {
     this.lastHitId = -1; // 같은 공격에 여러 번 맞지 않도록
     this.pull = null; // 사슬에 끌려오는 중이면 { x, y, speed } (목표 지점)
     this.bindTimer = 0; // 사슬에 묶여(속박) 움직이지 못하는 남은 시간 (감기 스킬)
+    this.bindCooldown = 0; // 속박 내부 쿨타임: 속박이 끝난 직후 이 시간 동안은 새로 묶이지(제자리 고정) 않음. 사슬 연결(chainTimer)은 계속 갱신됨
     this.chainTimer = 0; // 사슬이 이어져 있는 남은 시간 (속박보다 길 수 있음). 이어진 동안은 팽팽한 줄·끌어모으기·감옥 전이 대상
     this.chainTotal = 1;
     this.bindAnchor = null; // 묶은 사슬이 이어진 곳: 'player'(감기) 또는 { x, y }(사슬 감옥: 옮겨 오기 전 적이 죽은 자리)
@@ -133,10 +134,12 @@ export class Enemy {
       this.chainTimer -= dt;
       if (this.chainTimer <= 0) this.release(); // 사슬이 풀림
     }
+    if (this.bindCooldown > 0) this.bindCooldown -= dt;
     if (this.bindTimer > 0) {
       // 속박: 제자리에 묶임 (몸통 피해도 없음)
       this.bindTimer -= dt;
       this.stunTimer = Math.max(this.stunTimer, dt * 2);
+      if (this.bindTimer <= 0) this.bindCooldown = S.bindCooldown ?? 0; // 속박이 끝남 → 내부 쿨타임 시작
     }
     if (this.stunTimer > 0) {
       this.stunTimer -= dt;
@@ -210,13 +213,15 @@ export class Enemy {
 
   // 속박: 그 자리에 묶는다. 넉백으로 튕겨 나가지 않게 속도를 없앤다
   // time: 속박(제자리 고정) 시간, chainTime: 사슬이 이어져 있는 시간 (기본은 속박과 같음, 속박보다 짧을 수 없음)
+  // 사슬 연결은 다시 맞을 때마다 시간이 리셋(갱신)되지만, 속박(제자리 고정)은 끝난 직후 bindCooldown 동안 다시 걸리지 않는다
   bind(time, anchor = null, chainTime = time) {
     if (!this.alive) return;
     if (anchor) this.bindAnchor = anchor;
-    this.bindTimer = Math.max(this.bindTimer, time);
-    this.bindTotal = this.bindTimer;
     this.chainTimer = Math.max(this.chainTimer, time, chainTime);
     this.chainTotal = this.chainTimer;
+    if (this.bindTimer <= 0 && this.bindCooldown > 0) return; // 속박 내부 쿨타임 중: 연결만 갱신
+    this.bindTimer = Math.max(this.bindTimer, time);
+    this.bindTotal = this.bindTimer;
     this.vx = 0;
     this.vy = Math.max(this.vy, 0);
   }
@@ -255,6 +260,7 @@ export class Enemy {
 
   // 속박 풀기 (사슬이 끊어짐)
   release() {
+    if (this.bindTimer > 0) this.bindCooldown = this.stats.bindCooldown ?? 0; // 속박이 도중에 풀려도 내부 쿨타임 시작
     this.bindTimer = 0;
     this.chainTimer = 0;
     this.bindAnchor = null;
