@@ -131,17 +131,22 @@ export class Player {
     if (this.chain.active) this.chain.update(dt, this, world, enemies);
     if (this.pullChain.active) this.pullChain.update(dt, this, world, enemies);
     // 내리꽂기: 사슬 이동 직후 공격 키 (이동 중에 미리 누른 것도 인정)
+    let slamStartedNow = false;
     if (
       this.slamReadyTimer > 0 && !this.slamState && !this.chain.locksPlayer && !stunned &&
       (Input.wasPressed(ATTACK_KEY) || this.attackBufferTimer > 0)
-    ) this.startSlam();
+    ) {
+      this.startSlam();
+      slamStartedNow = true;
+    }
     if (this.slamState) this.updateSlam(dt, world);
     if (this.isDashing) {
       this.interruptCharge(); // 대시 중에는 공격 갱신을 건너뛰므로 여기서 차징을 끊는다
       if (this.dashTimer > 0) this.updateDash(dt, world);
       // 대시 중 눌린 점프·공격은 버퍼에 남겨서 대시가 끝나면 이어지게
       if (Input.wasPressed('Space')) this.jumpBufferTimer = C.jumpBuffer;
-      if (Input.wasPressed(ATTACK_KEY)) this.attackBufferTimer = this.weapon.inputBuffer;
+      // 내리꽂기를 시작시킨 바로 그 입력은 버퍼에 남기지 않는다 (남기면 내리꽂기가 끝난 직후 일반 휘두르기가 자동으로 한 번 더 나감)
+      if (Input.wasPressed(ATTACK_KEY) && !slamStartedNow) this.attackBufferTimer = this.weapon.inputBuffer;
       return;
     }
 
