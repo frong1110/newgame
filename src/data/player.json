@@ -148,6 +148,7 @@
     "stormReachY": 105,
     "stormBackReach": 30,
     "stormFanAngle": 150,
+    "chargeLengthMul": 1.0,
     "tuneEnabled": false,
     "tuneStrength": 1.0,
     "tuneMinLengthMul": 0.35,
