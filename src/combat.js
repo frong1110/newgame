@@ -107,7 +107,8 @@ export function resolveCombat(player, enemies, effects, hitstop) {
     const swing = e.ai?.attackBox(e);
     if (e.stunTimer <= 0 && (overlaps(player, e) || (swing && overlaps(player, swing)))) {
       const fromDir = player.x + player.w / 2 < e.x + e.w / 2 ? -1 : 1;
-      player.hurt(fromDir);
+      // 돌격형의 돌진이 플레이어를 맞히면(무적·대시 회피로 피한 경우는 제외) 돌진이 끝나고 지침으로 넘어간다
+      if (player.hurt(fromDir) && e.ai?.state === 'charge') e.ai.endCharge(e);
     }
   }
 }

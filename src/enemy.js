@@ -66,6 +66,7 @@ export class Enemy {
     this.flashTimer -= dt;
     updateStatus(this, dt);
     if (!this.alive) return;
+    if (this.held || this.pull || this.push || this.flight) this.ai?.interrupt(); // 붙잡힘·끌려옴·밀림·공중 상태는 제어 효과라 돌진도 끊김
     if (this.held) {
       // 철퇴 폭풍: 사슬 끝에 매달려 돌아가는 중. 위치는 chain.js 가 정한다
       this.vx = 0;
@@ -225,10 +226,15 @@ export class Enemy {
     this.lastHitId = hitId;
     damage *= Enemy.hooks.damageMul?.(this) ?? 1;
     this.hp -= damage;
+    this.flashTimer = this.stats.hitFlashTime;
+    if (this.ai?.armored) {
+      // 돌격형 돌진 중: 피해만 받고 경직·밀림은 없다 (제어 효과만 돌진을 끊음)
+      if (this.hp <= 0) this.die();
+      return true;
+    }
     this.vx = fromDir * knockX;
     this.vy = -knockY;
     this.stunTimer = this.stats.stunTime;
-    this.flashTimer = this.stats.hitFlashTime;
     this.dir = -fromDir; // 때린 쪽을 바라보게
     if (this.bindTimer > 0) {
       // 묶인 적은 맞아도 밀려나지 않는다
