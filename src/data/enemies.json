@@ -70,6 +70,7 @@
       "type": "ranged",
       "aggroRange": 560,
       "fireRange": 500,
+      "fireHeight": 50,
       "keepMin": 200,
       "keepMax": 340,
       "approachSpeed": 60,
