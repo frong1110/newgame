@@ -12,6 +12,7 @@ import { PlayerWeapon } from './playerWeapon.js';
 import { PlayerDash } from './playerDash.js';
 import { PlayerSlam } from './playerSlam.js';
 import { PlayerSpin } from './spinCharge.js';
+import { FlailStorm } from './flailStorm.js';
 
 export class Player {
   constructor(x, y, stats = PLAYER) {
@@ -22,6 +23,7 @@ export class Player {
     this.attackId = 0; // 공격할 때마다 증가. 적이 같은 공격에 중복으로 맞지 않게 하는 용도
     this.chain = new Chain('chain', 'dashCooldownTimer'); // 대시 트리의 사슬 스킬
     this.pullChain = new Chain('pullChain', 'specialCooldownTimer'); // 사슬 무기 특수 버튼: 당기기
+    this.flail = new FlailStorm(); // 투척 3단계 철퇴 폭풍 (당기기 길게 누르기)
     this.respawn(x, y);
   }
 
@@ -45,6 +47,7 @@ export class Player {
     this.dashDirY = 0;
     if (this.chain) this.chain.cancel();
     if (this.pullChain) this.pullChain.cancel();
+    if (this.flail) this.flail.cancel();
     this.specialCooldownTimer = 0;
     this.slamReadyTimer = 0; // 내리꽂기를 쓸 수 있는 남은 시간 (사슬 이동 직후)
     this.slamState = null; // null | 'dive' | 'recover'
@@ -103,8 +106,6 @@ export class Player {
     }
     // --- 특수 버튼: 사슬 당기기 (사슬 무기일 때). ↑↓ 로 위아래·대각선 조준 ---
     this.holdingUp = !stunned && Input.isDown('ArrowUp'); // 회전 투척: 당기는 동안 ↑ 면 띄우기
-    // 철퇴 폭풍 회전 중 C 를 다시 누르면 적을 던진다 (회전 중에는 아래 특수 버튼 시작 처리가 막혀 있다)
-    if (Input.wasPressed(SPECIAL_KEY) && this.pullChain.phase === 'spin') this.pullChain.releaseRequested = true;
     // 결박 갈래: 묶인 적이 2명 이상이면 C 가 당기기 대신 끌어모으기 (팽팽한 줄: 충돌, 사슬 감옥: 폭발)
     if (Input.wasPressed(SPECIAL_KEY) && this.canUseSpecialChain(stunned) && this.specialCooldownTimer <= 0 && this.bindPull?.tryStart()) {
       this.attackTimer = 0;
@@ -119,16 +120,12 @@ export class Player {
         if (airTarget) {
           this.facing = Math.sign(airTarget.x + airTarget.w / 2 - (this.x + this.w / 2)) || this.facing;
           this.pullChain.startSlam(this, airTarget);
-        } else {
-          // 회전 투척이 있으면 ↑ 는 조준이 아니라 '띄우기' 입력: 사슬은 좌우로만 던지고, ↑ 를 기억해 둔다
-          const throwSkill = ['throw', 'storm'].includes(this.stats.pullChain.onPullArrive);
-          const [dx, dy] = this.aim(inputDir, inputY, !throwSkill);
-          if (dx !== 0) this.facing = Math.sign(dx);
-          this.pullChain.start(this, dx, dy);
-          if (throwSkill) this.pullChain.launchWanted = this.holdingUp;
-        }
+        } else if (this.stats.pullChain.stormEnabled) {
+          this.flail.press(inputDir, inputY); // 철퇴 폭풍: 탭 = 당기기, 길게 누르면 회전 (flailStorm.js 가 가름)
+        } else this.beginPull(inputDir, inputY);
       }
     }
+    this.flail.update(dt, this, world, enemies, stunned);
     if (this.chain.active) this.chain.update(dt, this, world, enemies);
     if (this.pullChain.active) this.pullChain.update(dt, this, world, enemies);
     // 내리꽂기: 사슬 이동 직후 공격 키 (이동 중에 미리 누른 것도 인정)
@@ -138,6 +135,7 @@ export class Player {
     ) this.startSlam();
     if (this.slamState) this.updateSlam(dt, world);
     if (this.isDashing) {
+      this.interruptCharge(); // 대시 중에는 공격 갱신을 건너뛰므로 여기서 차징을 끊는다
       if (this.dashTimer > 0) this.updateDash(dt, world);
       // 대시 중 눌린 점프·공격은 버퍼에 남겨서 대시가 끝나면 이어지게
       if (Input.wasPressed('Space')) this.jumpBufferTimer = C.jumpBuffer;
@@ -218,6 +216,15 @@ export class Player {
     this.squash = approach(this.squash, 0, C.squashRecovery * dt);
   }
 
+  // 사슬 당기기 시작. 회전 투척이 있으면 ↑ 는 조준이 아니라 '띄우기' 입력: 사슬은 좌우로만 던지고, ↑ 를 기억해 둔다
+  beginPull(inputDir, inputY) {
+    const throwSkill = this.stats.pullChain.onPullArrive === 'throw';
+    const [dx, dy] = this.aim(inputDir, inputY, !throwSkill);
+    if (dx !== 0) this.facing = Math.sign(dx);
+    this.pullChain.start(this, dx, dy);
+    if (throwSkill) this.pullChain.launchWanted = this.holdingUp;
+  }
+
   // 적과 부딪혔을 때. fromDir: 적 → 플레이어 방향 (+1 / -1)
   hurt(fromDir) {
     if (this.isInvincible) return false; // 피격 무적 또는 대시 회피 중
@@ -229,11 +236,11 @@ export class Player {
     this.attackTimer = 0;
     this.comboTimer = 0;
     this.attackBufferTimer = 0;
-    this.cancelCharge();
-    this.storedShots = 0;
+    this.interruptCharge();
     this.dashTimer = 0;
     this.chain.cancel();
     this.pullChain.cancel();
+    this.flail.cancel();
     this.slamState = null;
     this.slamReadyTimer = 0;
     return true;
@@ -242,6 +249,7 @@ export class Player {
   draw(ctx, cam) {
     this.chain.draw(ctx, cam, this);
     this.pullChain.draw(ctx, cam, this);
+    this.flail.draw(ctx, cam, this);
     this.drawSlamChain(ctx, cam);
     // 대시 잔상
     const D = this.stats.dash;
