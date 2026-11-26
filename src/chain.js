@@ -14,6 +14,7 @@
 //   내리찍기 (startSlam): 공중 상태 적을 따라가 감고 → 멈칫 → 바닥에 꽂음(slamdown) → 충격파
 import { GAME } from './data/index.js';
 import { moveAndCollide, overlaps, overlapsSolid } from './physics.js';
+import { emitTag } from './tags.js';
 
 const SUBSTEP = 4; // 사슬 끝이 한 번에 움직이는 최대 거리(px). 얇은 지형을 뚫지 않게
 
@@ -350,6 +351,8 @@ export class Chain {
       }
       this.phase = null;
       this.target = null;
+      // 태그 효과 부가 연결 지점: 당기기 도착
+      if (this.key === 'pullChain' && enemy.alive) emitTag('pullArrive', { enemy, damage: p.stats.chainWeapon.combo[0].damage });
       return;
     }
     if (this.timer >= C.pullMaxTime) this.cancel();

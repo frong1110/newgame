@@ -10,6 +10,7 @@ export class Effects {
     this.tipFlashes = [];
     this.waves = [];
     this.transfers = [];
+    this.bolts = []; // 번개 연쇄 선
     this.shake = { time: 0, total: 0, mag: 0 };
   }
 
@@ -30,6 +31,10 @@ export class Effects {
     this.waves.push({ x, y, r, t: 0, total: waveTime });
   }
 
+  addBolt(x0, y0, x1, y1) {
+    this.bolts.push({ x0, y0, x1, y1, t: 0 });
+  }
+
   addTransfer(x, y, e) {
     this.transfers.push({ x, y, e, t: 0 });
   }
@@ -41,6 +46,7 @@ export class Effects {
     };
     age(this.puffs, () => GAME.puffDuration);
     age(this.transfers, () => GAME.chainTransferTime);
+    age(this.bolts, () => 0.2);
     age(this.waves, (w) => w.total);
     this.shake.time -= dt;
     age(this.tipFlashes, () => GAME.tipFlashTime);
@@ -69,6 +75,19 @@ export class Effects {
 
   // 캐릭터·적보다 위에 그리는 것
   drawOver(ctx, view) {
+    // 번개 연쇄: 두 적 사이를 잇는 지그재그 선
+    for (const b of this.bolts) {
+      ctx.strokeStyle = `rgba(255,236,120,${1 - b.t / 0.2})`;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(b.x0 - view.x, b.y0 - view.y);
+      for (let i = 1; i < 5; i++) {
+        const k = i / 5;
+        ctx.lineTo(b.x0 + (b.x1 - b.x0) * k - view.x + (i % 2 ? 7 : -7), b.y0 + (b.y1 - b.y0) * k - view.y + (i % 2 ? -5 : 5));
+      }
+      ctx.lineTo(b.x1 - view.x, b.y1 - view.y);
+      ctx.stroke();
+    }
     // 충격파: 착지 지점에서 좌우로 퍼지는 반원 + 먼지 선
     for (const w of this.waves) {
       const k = w.t / w.total;

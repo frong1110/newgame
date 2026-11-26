@@ -206,7 +206,8 @@
             }
           ]
         }
-      ]
+      ],
+      "page": 0
     },
     "dash": {
       "name": "대시 (이동)",
@@ -263,6 +264,295 @@
               "stat": "chain.slamAfterZip",
               "op": "set",
               "value": true
+            }
+          ]
+        }
+      ],
+      "page": 0
+    },
+    "tags": {
+      "name": "공용 증강 (태그, 테스트용)",
+      "page": 1,
+      "branches": [
+        "번개",
+        "불",
+        "얼음",
+        "구속",
+        "처형"
+      ],
+      "skills": [
+        {
+          "id": "tag_lightning_1",
+          "name": "번개 1개",
+          "description": "연결 지점 적중 20%: 2명 연쇄, 스턴 0.3초",
+          "requires": [],
+          "pos": [
+            0,
+            0
+          ],
+          "effects": [
+            {
+              "stat": "tags.lightning",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "id": "tag_lightning_2",
+          "name": "번개 3개",
+          "description": "확률 35%, 스턴 1초",
+          "requires": [
+            "tag_lightning_1"
+          ],
+          "pos": [
+            0,
+            1
+          ],
+          "effects": [
+            {
+              "stat": "tags.lightning",
+              "op": "add",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "id": "tag_lightning_3",
+          "name": "번개 5개",
+          "description": "스턴 적 피해 +30%, 스턴 중 처치 시 번개 폭발",
+          "requires": [
+            "tag_lightning_2"
+          ],
+          "pos": [
+            0,
+            2
+          ],
+          "effects": [
+            {
+              "stat": "tags.lightning",
+              "op": "add",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "id": "tag_fire_1",
+          "name": "불 1개",
+          "description": "20% 화상: 초당 최대 체력 1.5%",
+          "requires": [],
+          "pos": [
+            1,
+            0
+          ],
+          "effects": [
+            {
+              "stat": "tags.fire",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "id": "tag_fire_2",
+          "name": "불 3개",
+          "description": "확률 35%, 초당 3%, 3중첩",
+          "requires": [
+            "tag_fire_1"
+          ],
+          "pos": [
+            1,
+            1
+          ],
+          "effects": [
+            {
+              "stat": "tags.fire",
+              "op": "add",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "id": "tag_fire_3",
+          "name": "불 5개",
+          "description": "화상이 끝나면 폭발해 주변에 최대 체력 비례 피해",
+          "requires": [
+            "tag_fire_2"
+          ],
+          "pos": [
+            1,
+            2
+          ],
+          "effects": [
+            {
+              "stat": "tags.fire",
+              "op": "add",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "id": "tag_ice_1",
+          "name": "얼음 1개",
+          "description": "20% 둔화 (이동 -30%)",
+          "requires": [],
+          "pos": [
+            2,
+            0
+          ],
+          "effects": [
+            {
+              "stat": "tags.ice",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "id": "tag_ice_2",
+          "name": "얼음 3개",
+          "description": "확률 35%, 3중첩이면 1.5초 빙결(받는 피해 +20%)",
+          "requires": [
+            "tag_ice_1"
+          ],
+          "pos": [
+            2,
+            1
+          ],
+          "effects": [
+            {
+              "stat": "tags.ice",
+              "op": "add",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "id": "tag_ice_3",
+          "name": "얼음 5개",
+          "description": "빙결된 적을 처치하면 파편, 주변 둔화",
+          "requires": [
+            "tag_ice_2"
+          ],
+          "pos": [
+            2,
+            2
+          ],
+          "effects": [
+            {
+              "stat": "tags.ice",
+              "op": "add",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "id": "tag_bind_1",
+          "name": "구속 1개",
+          "description": "동시 속박 상한 +1명",
+          "requires": [],
+          "pos": [
+            3,
+            0
+          ],
+          "effects": [
+            {
+              "stat": "tags.bind",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "id": "tag_bind_2",
+          "name": "구속 3개",
+          "description": "상한 +1, 속박 +0.5초, 묶인 적 받는 피해 +15%",
+          "requires": [
+            "tag_bind_1"
+          ],
+          "pos": [
+            3,
+            1
+          ],
+          "effects": [
+            {
+              "stat": "tags.bind",
+              "op": "add",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "id": "tag_bind_3",
+          "name": "구속 5개",
+          "description": "상한 +1, 묶인 적이 죽으면 근처 2명에게 전이",
+          "requires": [
+            "tag_bind_2"
+          ],
+          "pos": [
+            3,
+            2
+          ],
+          "effects": [
+            {
+              "stat": "tags.bind",
+              "op": "add",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "id": "tag_execute_1",
+          "name": "처형 1개",
+          "description": "체력 10% 이하 적 처형",
+          "requires": [],
+          "pos": [
+            4,
+            0
+          ],
+          "effects": [
+            {
+              "stat": "tags.execute",
+              "op": "add",
+              "value": 1
+            }
+          ]
+        },
+        {
+          "id": "tag_execute_2",
+          "name": "처형 3개",
+          "description": "15% 이하, 처형 시 주변 적 1초 도망",
+          "requires": [
+            "tag_execute_1"
+          ],
+          "pos": [
+            4,
+            1
+          ],
+          "effects": [
+            {
+              "stat": "tags.execute",
+              "op": "add",
+              "value": 2
+            }
+          ]
+        },
+        {
+          "id": "tag_execute_3",
+          "name": "처형 5개",
+          "description": "처형 후 3초간 다음 공격 +30%",
+          "requires": [
+            "tag_execute_2"
+          ],
+          "pos": [
+            4,
+            2
+          ],
+          "effects": [
+            {
+              "stat": "tags.execute",
+              "op": "add",
+              "value": 2
             }
           ]
         }

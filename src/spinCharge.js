@@ -1,5 +1,6 @@
 import { Input } from './input.js';
 import { ATTACK_KEY } from './controls.js';
+import { TAGS } from './data/index.js';
 
 // 사슬 무기 분동 갈래 (회전 차지 · 쳐내기 축적 · 채찍 폭풍). player.js 의 Player 에 메서드로 붙는다 (applyMixins).
 //   회전 차지: 공격 키를 탭하면 일반 휘두르기, 꾹 누르면(chargeHoldThreshold) 사슬을 머리 위로 돌려 속도를 쌓고 놓으면 방출
@@ -23,8 +24,11 @@ export class PlayerSpin {
     return this.releaseCharge != null ? 1 + this.releaseCharge * this.weapon.chargeSpeedBonus : 1;
   }
 
+  // 방출 차지 배율 × 처형 태그 3단계 강화(처형 후 3초 안의 다음 휘두르기 +30%)
   get chargeDamageMul() {
-    return this.releaseCharge != null ? 1 + this.releaseCharge * this.weapon.chargeDamageBonus : 1;
+    const charge = this.releaseCharge != null ? 1 + this.releaseCharge * this.weapon.chargeDamageBonus : 1;
+    const buffed = this.execBuffTimer > 0 || this.execBuffSwing === this.attackId;
+    return charge * (buffed ? 1 + TAGS.execute.buffBonus : 1);
   }
 
   // 돌고 있는 분동의 쳐내기·적중 반경 (회전 스택이 쌓일수록 넓어짐)
