@@ -76,9 +76,8 @@ export class RangedAI {
   }
 
   aimAt(e, target, world) {
-    const dx = target.x + target.w / 2 - (e.x + e.w / 2), dy = target.y + target.h / 2 - (e.y + e.h / 2);
-    const d = Math.hypot(dx, dy) || 1;
-    this.aim = [dx / d, dy / d];
+    // 각도는 바뀌지 않는다: 항상 수평 (바라보는 쪽으로 평행하게)
+    this.aim = [Math.sign(target.x + target.w / 2 - (e.x + e.w / 2)) || e.dir, 0];
     this.lineEnd = this.rayEnd(e, world, this.aim[0], this.aim[1]);
   }
 
@@ -123,7 +122,7 @@ export class RangedAI {
     const away = -e.dir;
     const canRetreat = e.groundAhead(world, away) && !e.hitWall;
     if (dist < C.keepMin && canRetreat) return away * C.retreatSpeed;
-    if (this.cooldown <= 0 && dist <= C.fireRange && this.clearShot(e, target, world)) {
+    if (this.cooldown <= 0 && dist <= C.fireRange && Math.abs(dy) <= C.fireHeight && this.clearShot(e, target, world)) {
       this.state = 'windup';
       this.timer = this.windupTime;
       this.locked = false;
