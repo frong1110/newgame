@@ -154,12 +154,12 @@
             {
               "stat": "chainWeapon.tipHitMultiplier",
               "op": "set",
-              "value": 2.0
+              "value": 2.6
             },
             {
               "stat": "chainWeapon.weightModelScale",
               "op": "set",
-              "value": 2.0
+              "value": 2.6
             }
           ]
         },

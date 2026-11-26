@@ -98,7 +98,7 @@
     "arcScaleY": 0.6,
     "lengthMultiplier": 1.0,
     "tipFraction": 0.25,
-    "minTipExtension": 0.7,
+    "minTipExtension": 0.61,
     "tipBonusMultiplier": 1,
     "tipBindTime": 0,
     "tipChainTime": 0,
@@ -155,8 +155,8 @@
     "tuneVerticalRange": 60,
     "tuneAimInset": 6,
     "tuneMinTipExtension": 0.5,
-    "tipHitMultiplier": 1,
-    "weightModelScale": 1,
+    "tipHitMultiplier": 1.3,
+    "weightModelScale": 1.3,
     "hitThickness": 12,
     "combo": [
       {
