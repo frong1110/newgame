@@ -151,7 +151,7 @@
     "tuneEnabled": false,
     "tuneStrength": 1.0,
     "tuneMinLengthMul": 0.35,
-    "tuneMaxLengthMul": 1.8,
+    "tuneMaxLengthMul": 1.4,
     "tuneVerticalRange": 60,
     "tuneAimInset": 6,
     "tuneMinTipExtension": 0.5,
