@@ -44,7 +44,8 @@ const BASE_URL = process.env.BASE_URL || 'http://localhost:5173/?level=level1';
     setup([], 1500, 450, [[1680, 452, 0.4]]); tap('KeyC', 'pull', 80);
     setup(['cw_spin_throw'], 1500, 450, [[1680, 452, 0.4], [1760, 452, 99]]); tap('KeyC', 'throw', 120);
     setup(['cw_slam'], 1500, 450, [[1640, 452, 0.4], [1700, 452, 99]]); key('ArrowUp', true); tap('KeyC', 'launch', 40); key('ArrowUp', false); tap('KeyC', 'airslam', 120);
-    setup(['cw_flail_storm'], 1500, 450, [[1660, 452, 0.4], [1440, 452, 99]]); tap('KeyC', 'storm', 100); tap('KeyC', 'storm-slam', 120); });
+    setup(['cw_flail_storm'], 1500, 450, [[1560, 452, 99], [1590, 452, 99], [1470, 452, 99]]); key('KeyC', true); run(40, 'storm-hold'); key('KeyC', false); run(120, 'storm-fling');
+    setup(['cw_flail_storm'], 1500, 450, [[1560, 452, 99], [1590, 452, 99]]); key('KeyC', true); run(40, 'storm-hold2'); key('ArrowDown', true); key('KeyC', false); run(60, 'storm-down'); key('ArrowDown', false); });
   // D. 감기·연결·감옥
   await sc('D', () => {
     setup(['cw_prison'], 1460, 450, [[1569, 452, 0.2], [1640, 452, 99], [1720, 452, 99]]);

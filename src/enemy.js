@@ -38,7 +38,9 @@ export class Enemy {
     // 공중 상태: 던져지거나(throw) 띄워져서(launch) 날아가는 중이면 { kind, damage, knockbackX, knockbackY, hitstop, hitId, hangLeft }
     // 머리 위에 '공중' 표시가 붙고, 내리찍기 스킬의 대상이 된다
     this.flight = null;
-    this.held = false; // 철퇴 폭풍으로 사슬 끝에 매달려 있으면 true (위치는 사슬이 정함)
+    this.held = false; // 철퇴 폭풍으로 붙잡혀 돌려지고 있으면 true (위치는 flailStorm.js 가 정함)
+    this.blast = null; // 날려진 뒤 벽·바닥에 닿아 터질 폭발 정보 (combat.js 가 한 번 처리)
+    this.grabbable = true; // false 면 철퇴 폭풍이 붙잡지 못함 (보스 본체 등)
     this.push = null; // 정해진 x 까지 미끄러지듯 밀려나는 중이면 { x, speed, stun } (내리꽂기)
   }
 
@@ -103,10 +105,15 @@ export class Enemy {
       }
       this.stunTimer = Math.max(this.stunTimer, dt * 2);
       moveAndCollide(this, world, dt);
-      if ((this.onGround && this.vy >= 0) || (F.kind === 'throw' && this.hitWall)) {
+      const landed = this.onGround && this.vy >= 0;
+      const wall = F.kind === 'throw' && this.hitWall && !F.ignoreWall;
+      if (landed || wall) {
+        // 철퇴 폭풍으로 날려졌다면 벽(wall)·바닥(land)에 닿는 순간 폭발 (combat.js 가 처리)
+        const B = F.blast && ((wall && F.blast.wall) || (landed && F.blast.land)) ? F.blast : null;
+        if (B) this.blast = { ...B, group: F.group, x: this.x + this.w / 2, y: this.y + this.h };
         this.flight = null;
         this.vx = 0;
-        this.stunTimer = Math.max(this.stunTimer, S.stunTime);
+        this.stunTimer = Math.max(this.stunTimer, B ? B.stun : S.stunTime);
       }
       if (this.y > world.pixelHeight + GAME.fallRespawnMargin) this.die();
       return;

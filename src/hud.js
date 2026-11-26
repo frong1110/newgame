@@ -3,7 +3,7 @@ export function drawHUD(ctx, canvas, { player, enemies, skillTree, room, isTouch
   ctx.fillStyle = 'rgba(255,255,255,0.8)';
   ctx.font = '14px monospace';
   ctx.fillText(`jumps: ${player.stats.maxJumps - player.jumpsUsed}/${player.stats.maxJumps}`, 12, 22);
-  ctx.fillText(`weapon: ${player.usesChainWeapon ? '사슬' : '검'}${player.usesChainWeapon ? `   당기기(C): ${player.pullChain.active ? player.pullChain.phase : player.specialCooldownTimer > 0 ? '...' : 'ready'}` : ''}`, 12, 40);
+  ctx.fillText(`weapon: ${player.usesChainWeapon ? '사슬' : '검'}${player.usesChainWeapon ? `   당기기(C): ${player.flail.active ? 'storm' : player.pullChain.active ? player.pullChain.phase : player.specialCooldownTimer > 0 ? '...' : 'ready'}` : ''}`, 12, 40);
   const comboLabel = player.attackTimer > 0 ? `${player.comboStep + 1}/${player.weapon.combo.length} ${player.step.name}` : '-';
   ctx.fillText(`combo: ${comboLabel}`, 12, 58);
   const dashReady = player.dashCooldownTimer <= 0 && (player.usesChain || player.onGround || player.airDashesUsed < player.stats.dash.maxAirDashes);
