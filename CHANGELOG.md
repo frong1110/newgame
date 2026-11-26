@@ -16,6 +16,7 @@
 - **난이도(성흔 단계) 수치 분리**: `data/difficulty.json` 에 단계별 `chargeWindupMul`(1.0/0.85/0.7/0.55)과 `chargeWindupMin`. 주소 `?difficulty=N` 으로 선택, 화면에 표시. 단계가 오르면 돌진 준비시간이 줄어듦
 - 돌진 준비·돌진 중 머리 위 **느낌표**: 준비 때 흰/노랑 점멸, 돌진 중 붉게 유지(+속도선). 근접 준비는 흰 점멸로 구분
 - 바짝 붙어 있어도 돌격 준비 가능(최소 거리 조건 제거, 접근 정지 거리만 유지)
+- README 를 현재 구현(v0.5)에 맞게 갱신: 조작(탭/홀드, T·P 키, 주소 옵션), 사슬 트리 표, 태그, 적·맵, 구조
 - 수치: `enemies.json` `charger.ai` 의 `meleeTime`·`meleeTimeVariance`·`meleeRange`·`meleeReach`·`meleeWindup`·`meleeActive`·`meleeRecover`·`meleeApproachSpeed`·`chargeCooldown`·`recoverTime`(0.9 → 0.5)
 
 ## [0.5.2] - 2026-11-26
