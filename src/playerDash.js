@@ -5,7 +5,7 @@ import { moveAndCollide } from './physics.js';
 export class PlayerDash {
   // 대시 중이거나 사슬로 멈칫·날아가는 중 (조작 불가)
   get isDashing() {
-    return this.dashTimer > 0 || this.chain.locksPlayer || this.pullChain.locksPlayer || this.slamState !== null;
+    return this.dashTimer > 0 || this.chain.locksPlayer || this.pullChain.locksPlayer || this.flail.active || this.slamState !== null;
   }
 
   get isInvincible() {

@@ -115,7 +115,7 @@
         {
           "id": "cw_flail_storm",
           "name": "철퇴 폭풍",
-          "description": "당긴 적을 매달고 회전해 모두 피해. C 로 던지고, 다시 C 로 내리찍음",
+          "description": "C 꾹: 사슬을 돌려 적을 붙잡고, 놓으면 앞·↑·↓ 로 한꺼번에 날림",
           "requires": [
             "cw_slam"
           ],
@@ -125,9 +125,9 @@
           ],
           "effects": [
             {
-              "stat": "pullChain.onPullArrive",
+              "stat": "pullChain.stormEnabled",
               "op": "set",
-              "value": "storm"
+              "value": true
             }
           ]
         },

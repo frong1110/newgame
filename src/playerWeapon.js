@@ -266,7 +266,7 @@ export class PlayerWeapon {
 
   // 특수 버튼 사슬을 쓸 수 있는 상태인지 (대기시간은 따로 본다: 내리찍기는 대기시간 무시)
   canUseSpecialChain(stunned) {
-    return !stunned && this.usesChainWeapon && !this.isDashing && !this.pullChain.active && !this.chain.locksPlayer;
+    return !stunned && this.usesChainWeapon && !this.isDashing && !this.pullChain.active && !this.chain.locksPlayer && !this.flail.active;
   }
 
   // 사거리 안에서 가장 가까운 공중 상태 적 (내리찍기 대상)

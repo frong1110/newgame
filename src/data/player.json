@@ -325,22 +325,7 @@
     "slamShake": 6,
     "slamShakeTime": 0.2,
     "slamWaveTime": 0.3,
-    "stormTime": 0.5,
-    "stormMaxTime": 2.0,
-    "stormMinReleaseTime": 0.1,
-    "stormTurns": 1,
-    "stormRadius": 95,
-    "stormScaleY": 0.45,
-    "stormGroundLift": 60, "stormLiftSpeed": 500,
-    "stormHitPad": 8,
-    "stormDamage": 2,
-    "stormSelfDamage": 1,
-    "stormThrowSpeedX": 360,
-    "stormThrowSpeedY": 300,
-    "stormThrowDamage": 1,
-    "stormKnockbackX": 320,
-    "stormKnockbackY": 260,
-    "stormHitstop": 0.05
+    "stormEnabled": false, "stormHoldThreshold": 0.2, "stormTime": 0.5, "stormMaxTime": 2.0, "stormRadius": 95, "stormScaleY": 0.45, "stormGroundLift": 60, "stormLiftSpeed": 500, "stormGrabReachX": 140, "stormGrabReachY": 60, "stormMaxHeld": 6, "stormDamage": 1, "stormCancelStun": 0.3, "stormCooldown": 0, "stormForwardSpeedX": 800, "stormForwardSpeedY": 120, "stormForwardGravity": 300, "stormForwardDamage": 2, "stormForwardKnockbackX": 260, "stormForwardKnockbackY": 200, "stormWallDamage": 3, "stormWallStun": 1.5, "stormBlastRadius": 90, "stormBlastDamage": 2, "stormBlastKnockbackX": 300, "stormBlastKnockbackY": 260, "stormBlastShake": 7, "stormBlastShakeTime": 0.25, "stormBlastWaveTime": 0.35, "stormDownSpeed": 900, "stormDownDamage": 3, "stormDownStun": 0.7, "stormHitstop": 0.06
   },
   "slam": {
     "readyTime": 0.8,
