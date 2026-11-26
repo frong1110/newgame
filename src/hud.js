@@ -1,4 +1,5 @@
 import { TAG_NAMES } from './tags.js';
+import { DIFFICULTY } from './data/index.js';
 
 // 화면 글자: 왼쪽 위 디버그 정보, 오른쪽 위 보유 스킬 목록, 위쪽 가운데 버전
 export function drawHUD(ctx, canvas, { player, enemies, skillTree, room, isTouch }) {
@@ -15,6 +16,8 @@ export function drawHUD(ctx, canvas, { player, enemies, skillTree, room, isTouch
 
   const tg = player.stats.tags;
   if (tg && Object.values(tg).some((n) => n > 0)) ctx.fillText(`태그: ${Object.entries(tg).filter(([, n]) => n > 0).map(([k, n]) => `${TAG_NAMES[k]}${n}`).join(' ')}`, 12, 130);
+
+  if (DIFFICULTY.level > 0) ctx.fillText(`난이도: ${DIFFICULTY.levels[DIFFICULTY.level].name}`, 12, 148);
 
   const owned = [...skillTree.owned].map((id) => skillTree.byId[id].name);
   ctx.textAlign = 'right';

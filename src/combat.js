@@ -2,7 +2,7 @@
 //   - 내리꽂기(대시 트리) 충격, 내리찍기(사슬 무기) 충격 이펙트
 //   - 플레이어 공격(휘두르기·검) → 적, 끝부분 적중 효과(불꽃·번쩍임·효과음·감기, 최대 스택 방출 태그)
 //   - 던져져 날아가는 적 → 다른 적 (회전 투척)
-//   - 적 몸통 → 플레이어
+//   - 적 몸통·근접 공격(돌격형) → 플레이어
 import { overlaps } from './physics.js';
 import { playSfx } from './audio.js';
 import { bindWithCap } from './bindChains.js';
@@ -103,8 +103,9 @@ export function resolveCombat(player, enemies, effects, hitstop) {
         if (other.takeHit(T.damage, Math.sign(e.vx) || 1, T.knockbackX, T.knockbackY, T.hitId)) hitstop.t = T.hitstop;
       }
     }
-    // 적 몸통 → 플레이어 (경직 중인 적은 공격 판정 없음)
-    if (e.stunTimer <= 0 && overlaps(player, e)) {
+    // 적 몸통 → 플레이어 (경직 중인 적은 공격 판정 없음). 돌격형이 근접으로 휘두르는 영역도 같음
+    const swing = e.ai?.attackBox(e);
+    if (e.stunTimer <= 0 && (overlaps(player, e) || (swing && overlaps(player, swing)))) {
       const fromDir = player.x + player.w / 2 < e.x + e.w / 2 ? -1 : 1;
       player.hurt(fromDir);
     }
