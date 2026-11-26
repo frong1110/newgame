@@ -6,7 +6,7 @@
 //   별의 힘 변이(설계안): burstRadius > 0 이면 돌진이 끝날 때 결정 파편이 터짐 (프로토타입에서는 꺼 둠)
 //   근접 공격 구간 길이는 개체마다 meleeTime ± meleeTimeVariance(20%) 안에서 무작위(스폰할 때 한 번 정함)
 //   난이도(difficulty.json)가 오르면 돌진 준비시간(windupTime)이 줄어든다
-// 맞아서 경직되면 동작이 끊긴다(interrupt). 수치는 enemies.json 의 ai 항목.
+// 준비·근접 중 맞아서 경직되면 동작이 끊긴다(interrupt). 돌진은 피해로는 안 끊기고 제어 효과만 끊는다(armored). 수치는 enemies.json 의 ai 항목.
 import { DIFFICULTY } from './data/index.js';
 
 export class ChargerAI {
@@ -34,7 +34,12 @@ export class ChargerAI {
     return this.state === 'windup' || this.state === 'charge' || (this.state === 'melee' && this.swing !== null);
   }
 
-  // 경직·속박·붙잡힘 등으로 동작이 끊김: 잠깐 쉬었다 다시 시작
+  // 돌진 중에는 평타·피해 스킬에 맞아도 경직·밀림이 없다 (피해는 받음). 속박·스턴·빙결·붙잡힘 같은 제어만 돌진을 끊는다
+  get armored() {
+    return this.state === 'charge';
+  }
+
+  // 제어 효과(경직·속박·스턴·빙결·붙잡힘·끌려옴·도주 등)로 동작이 끊김: 잠깐 쉬었다 다시 시작
   interrupt() {
     if (this.state === 'idle') return;
     this.state = 'idle';
