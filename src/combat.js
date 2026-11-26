@@ -54,8 +54,21 @@ function resolveBlasts(enemies, effects, hitstop) {
   }
 }
 
+// 돌격형 별의 힘 변이: 돌진이 끝나며 결정 파편이 터져 반경 안 플레이어에게 피해
+function resolveShardBursts(player, enemies, effects) {
+  for (const e of enemies) {
+    const b = e.shardBurst;
+    if (!b) continue;
+    e.shardBurst = null;
+    const dx = Math.max(player.x - b.x, 0, b.x - (player.x + player.w)), dy = Math.max(player.y - b.y, 0, b.y - (player.y + player.h));
+    if (Math.hypot(dx, dy) <= b.r) player.hurt(Math.sign(player.x + player.w / 2 - b.x) || 1);
+    effects.addImpact(b.x, b.y, b.r, 3, 0.1, 0.25);
+  }
+}
+
 export function resolveCombat(player, enemies, effects, hitstop) {
   resolveSlam(player, enemies, effects, hitstop);
+  resolveShardBursts(player, enemies, effects);
   resolveBlasts(enemies, effects, hitstop);
   hitstop.t = Math.max(hitstop.t, player.flail.takeHitstop());
   // 사슬(대시·당기기)로 적을 맞힌 경우
