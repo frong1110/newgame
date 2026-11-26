@@ -1,0 +1,23 @@
+{
+  "_doc": "난이도(설계안 '성흔 단계'): 단계가 오를수록 몬스터 패턴이 빨라진다. level 은 개발 서버·배포 주소의 ?difficulty=N 으로 바꾼다(기본 0). 배율은 모두 초안",
+  "level": 0,
+  "levels": [
+    {
+      "name": "성흔 0",
+      "chargeWindupMul": 1.0
+    },
+    {
+      "name": "성흔 1",
+      "chargeWindupMul": 0.85
+    },
+    {
+      "name": "성흔 2",
+      "chargeWindupMul": 0.7
+    },
+    {
+      "name": "성흔 3",
+      "chargeWindupMul": 0.55
+    }
+  ],
+  "chargeWindupMin": 0.15
+}

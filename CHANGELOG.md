@@ -6,13 +6,15 @@
 - **MINOR** (0.**3**.0 → 0.**4**.0): 새 무기·캐릭터·맵·큰 시스템 같은 큰 단위이거나 따로 요청했을 때만
 
 ## [0.5.3] - 2026-11-26
-돌격형 몬스터 패턴 변경: 돌진 → 근접 공격 구간 → 재사용대기 → 재돌진.
+돌격형 몬스터 패턴 변경: 돌진 → 근접 공격 구간 → 바로 재돌진, 난이도 수치 분리.
 
 ### 바뀐 점
-- 돌진 후 지침 0.5초 → **근접 공격 구간 3초**(쫓아가 휘두름: 준비 0.3 → 휘두름 0.12 → 후딜 0.5, 앞쪽 44px 타격 영역) → **돌격 재사용대기 2초**(접근만) → 다시 돌진
+- 돌진 후 지침 0.5초 → **근접 공격 구간 5초**(쫓아가 휘두름: 준비 0.2 → 휘두름 0.12 → 후딜 0.25, 앞쪽 44px 타격 영역, 약 0.57초에 한 번 — 전보다 빈도 증가) → **재사용대기 없이 바로 재돌진**(`chargeCooldown` 0, 슬롯은 남김)
+- **개체별 근접 시간 무작위**: `meleeTime` ± `meleeTimeVariance`(20%) 안에서 개체마다 스폰 때 정함 (4~6초)
+- **난이도(성흔 단계) 수치 분리**: `data/difficulty.json` 에 단계별 `chargeWindupMul`(1.0/0.85/0.7/0.55)과 `chargeWindupMin`. 주소 `?difficulty=N` 으로 선택, 화면에 표시. 단계가 오르면 돌진 준비시간이 줄어듦
 - 돌진 준비·돌진 중 머리 위 **느낌표**: 준비 때 흰/노랑 점멸, 돌진 중 붉게 유지(+속도선). 근접 준비는 흰 점멸로 구분
-- 바짝 붙어 있어도 재사용대기가 끝나면 돌격 준비 (최소 거리 조건 제거, 접근 정지 거리만 유지)
-- 수치: `enemies.json` `charger.ai` 의 `meleeTime`·`meleeRange`·`meleeReach`·`meleeWindup`·`meleeActive`·`meleeRecover`·`meleeApproachSpeed`·`chargeCooldown`·`recoverTime`(0.9 → 0.5)
+- 바짝 붙어 있어도 돌격 준비 가능(최소 거리 조건 제거, 접근 정지 거리만 유지)
+- 수치: `enemies.json` `charger.ai` 의 `meleeTime`·`meleeTimeVariance`·`meleeRange`·`meleeReach`·`meleeWindup`·`meleeActive`·`meleeRecover`·`meleeApproachSpeed`·`chargeCooldown`·`recoverTime`(0.9 → 0.5)
 
 ## [0.5.2] - 2026-11-26
 돌격형 몬스터(맵·몬스터 설계안의 '돌격형 = 족쇄 죄수')와 돌격형 시험 구역 추가.

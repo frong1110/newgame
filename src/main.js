@@ -1,6 +1,6 @@
 // 게임 진입점: 객체 생성, 고정 시간 간격 루프, 메뉴(스킬 트리·선택 창)와 방 진행, 카메라, 그리기 순서.
 // 세부 처리는 각 모듈에 있다: combat.js(타격 판정), effects.js(이펙트·흔들림), bindChains.js(결박 갈래), hud.js(화면 글자)
-import { GAME, LEVELS, PLAYER, SKILLS } from './data/index.js';
+import { GAME, LEVELS, PLAYER, SKILLS, DIFFICULTY } from './data/index.js';
 import { Input } from './input.js';
 import { World } from './world.js';
 import { Player } from './player.js';
@@ -24,6 +24,7 @@ const isTouch = setupTouchControls(); // 터치 기기(또는 ?touch=1)에서 �
 const ctx = canvas.getContext('2d');
 
 // 맵: 기본은 결박 시험장. 주소에 ?level=level1 을 붙이면 예전 시험장 (회귀 재생용)
+DIFFICULTY.level = Math.max(0, Math.min(DIFFICULTY.levels.length - 1, Number(new URLSearchParams(location.search).get('difficulty')) || 0)); // ?difficulty=N
 const world = new World(LEVELS[new URLSearchParams(location.search).get('level')] ?? LEVELS.bind);
 const skillTree = new SkillTree(PLAYER);
 const player = new Player(world.spawn.x, world.spawn.y, skillTree.stats);

@@ -4,11 +4,22 @@
 //   → 지침(recover) → 근접 공격 구간(melee, meleeTime 동안 쫓아다니며 휘두름)
 //   → 재사용대기(idle, chargeCooldown 동안 돌격 불가·접근만) → 다시 돌진
 //   별의 힘 변이(설계안): burstRadius > 0 이면 돌진이 끝날 때 결정 파편이 터짐 (프로토타입에서는 꺼 둠)
+//   근접 공격 구간 길이는 개체마다 meleeTime ± meleeTimeVariance(20%) 안에서 무작위(스폰할 때 한 번 정함)
+//   난이도(difficulty.json)가 오르면 돌진 준비시간(windupTime)이 줄어든다
 // 맞아서 경직되면 동작이 끊긴다(interrupt). 수치는 enemies.json 의 ai 항목.
+import { DIFFICULTY } from './data/index.js';
+
 export class ChargerAI {
-  constructor(cfg) {
+  constructor(cfg, rng = Math.random) {
     this.cfg = cfg;
+    this.meleeTime = cfg.meleeTime * (1 + (rng() * 2 - 1) * cfg.meleeTimeVariance); // 이 개체의 근접 공격 구간 길이
     this.reset();
+  }
+
+  // 현재 난이도가 반영된 돌진 준비시간
+  get windupTime() {
+    const mul = DIFFICULTY.levels[DIFFICULTY.level]?.chargeWindupMul ?? 1;
+    return Math.max(DIFFICULTY.chargeWindupMin, this.cfg.windupTime * mul);
   }
 
   reset() {
@@ -53,7 +64,7 @@ export class ChargerAI {
     }
     if (this.state === 'recover') {
       this.timer -= dt;
-      if (this.timer <= 0) this.start('melee', C.meleeTime);
+      if (this.timer <= 0) this.start('melee', this.meleeTime);
       return 0;
     }
     if (this.state === 'melee') return this.updateMelee(e, dt, target, world);
@@ -65,7 +76,7 @@ export class ChargerAI {
     e.dir = Math.sign(dx) || e.dir; // 플레이어를 바라봄
     const near = Math.abs(dx) <= C.chargeRange; // 근접 공격 직후처럼 바짝 붙어 있어도 재사용대기가 끝나면 돌격 준비
     if (near && this.cooldown <= 0 && e.groundAhead(world)) {
-      this.start('windup', C.windupTime);
+      this.start('windup', this.windupTime);
       return 0;
     }
     if (Math.abs(dx) < C.minChargeDist || !e.groundAhead(world)) return 0; // 가까이 붙었거나 낭떠러지 앞이면 접근을 멈춤
@@ -126,7 +137,7 @@ export class ChargerAI {
       ctx.fillRect(px + e.w / 2 - 2, py - 18, 4, 4);
     };
     if (this.state === 'windup') {
-      const k = 1 - this.timer / this.cfg.windupTime;
+      const k = 1 - this.timer / this.windupTime;
       bang(Math.floor(k * 8) % 2 ? '#ffffff' : '#ffcc4d');
     } else if (this.state === 'charge') {
       bang('#ff4d4d');

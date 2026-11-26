@@ -39,14 +39,15 @@
       "cooldown": 0.6,
       "burstRadius": 0,
       "burstDamage": 1,
-      "chargeCooldown": 2.0,
-      "meleeTime": 3.0,
+      "chargeCooldown": 0,
+      "meleeTime": 5.0,
       "meleeRange": 42,
       "meleeReach": 44,
       "meleeApproachSpeed": 110,
-      "meleeWindup": 0.3,
+      "meleeWindup": 0.2,
       "meleeActive": 0.12,
-      "meleeRecover": 0.5
+      "meleeRecover": 0.25,
+      "meleeTimeVariance": 0.2
     }
   }
 }

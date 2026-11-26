@@ -4,6 +4,7 @@ import game from './game.json';
 import enemies from './enemies.json';
 import skills from './skills.json';
 import tags from './tags.json';
+import difficulty from './difficulty.json';
 import level1 from './levels/level1.txt?raw';
 import bind from './levels/bind.txt?raw';
 
@@ -12,6 +13,7 @@ export const GAME = game;
 export const ENEMIES = enemies;
 export const SKILLS = skills;
 export const TAGS = tags;
+export const DIFFICULTY = difficulty; // 난이도 단계(level)와 단계별 배율. main.js 가 주소의 ?difficulty=N 으로 level 을 정한다
 export const LEVELS = {
   level1: level1.trim().split(/\r?\n/), // 기본 시험장 (회귀 재생 기준: ?level=level1)
   bind: bind.trim().split(/\r?\n/), // 결박 갈래 시험장 (기본 맵)

@@ -31,7 +31,7 @@ export class Enemy {
     this.hp = this.stats.maxHp;
     this.alive = true;
     this.stunTimer = 0;
-    this.ai = this.stats.ai?.type === 'charger' ? new ChargerAI(this.stats.ai) : null; // 돌격형 등 행동 패턴 (없으면 단순 순찰)
+    this.ai = this.stats.ai?.type === 'charger' ? new ChargerAI(this.stats.ai) : null; // 돌격형은 스폰·방 초기화 때마다 개체별 근접 시간을 새로 뽑음 // 돌격형 등 행동 패턴 (없으면 단순 순찰)
     this.shardBurst = null; // 돌진이 끝나며 터지는 결정 파편 (별의 힘 변이, combat.js 가 처리)
     this.status = newStatus(); // 상태이상 (status.js): 화상·둔화·빙결·감전·도주
     this.boss = this.stats.boss ?? false; // 보스는 스턴·빙결 면역, 최대 체력 비례 피해 절반, 붙잡기 면역
