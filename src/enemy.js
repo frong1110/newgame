@@ -173,14 +173,15 @@ export class Enemy {
   }
 
   // 회전 투척: dir 쪽으로 포물선을 그리며 날아간다. C = 던진 사슬의 수치
-  throwAway(dir, C, hitId) {
+  // unit: 사슬 데미지 단위 (C.throwDamage 는 그 배수)
+  throwAway(dir, C, hitId, unit = 1) {
     if (!this.alive) return;
     this.release();
     this.vx = dir * C.throwSpeedX;
     this.vy = -C.throwSpeedY;
     this.flight = {
       kind: 'throw',
-      damage: C.throwDamage,
+      damage: C.throwDamage * unit,
       knockbackX: C.throwKnockbackX,
       knockbackY: C.throwKnockbackY,
       hitstop: C.throwHitstop,

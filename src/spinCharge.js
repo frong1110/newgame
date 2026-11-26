@@ -116,7 +116,7 @@ export class PlayerSpin {
       const dx = Math.max(e.x - cx, 0, cx - (e.x + e.w)), dy = Math.max(e.y - cy, 0, cy - (e.y + e.h));
       if (Math.hypot(dx, dy) > r) continue;
       this.spinHitCd.set(e, W.stormHitCooldown);
-      e.takeHit(W.stormHitDamage, Math.sign(e.x + e.w / 2 - cx) || 1, W.deflectKnockbackX, W.deflectKnockbackY, `spin${this.attackId}-${this.spinHitSeq++}`);
+      e.takeHit(W.stormHitDamage * this.chainDamage, Math.sign(e.x + e.w / 2 - cx) || 1, W.deflectKnockbackX, W.deflectKnockbackY, `spin${this.attackId}-${this.spinHitSeq++}`);
       this.addSpinStack();
     }
   }
@@ -128,7 +128,7 @@ export class PlayerSpin {
     if (Math.hypot(p.x - cx, p.y - cy) > this.spinRadius + 6) return false;
     const W = this.weapon;
     if (W.storeEnabled && this.storedShots < W.storeMax) this.storedShots++;
-    else this.projectiles?.spawn(p.x, p.y, -p.vx, -p.vy, 'player', W.deflectDamage); // 저장 없거나 가득 차면 바로 반사
+    else this.projectiles?.spawn(p.x, p.y, -p.vx, -p.vy, 'player', W.deflectDamage * this.chainDamage); // 저장 없거나 가득 차면 바로 반사
     this.addSpinStack();
     return true;
   }
@@ -148,7 +148,7 @@ export class PlayerSpin {
       const spread = maxed ? W.stormFanAngle : W.reflectFanAngle; // 최대 스택은 전방으로 훨씬 넓게
       const a = n === 1 ? 0 : ((-spread / 2 + (spread * i) / (n - 1)) * Math.PI) / 180;
       const dx = this.facing * Math.cos(a);
-      this.projectiles?.spawn(cx, cy, dx * W.reflectSpeed, Math.sin(a) * W.reflectSpeed, 'player', W.deflectDamage);
+      this.projectiles?.spawn(cx, cy, dx * W.reflectSpeed, Math.sin(a) * W.reflectSpeed, 'player', W.deflectDamage * this.chainDamage);
     }
     if (maxed) this.spinStacks = 0; // 최대 스택은 방출로 소모
   }

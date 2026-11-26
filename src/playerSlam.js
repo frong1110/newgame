@@ -98,6 +98,7 @@ export class PlayerSlam {
     const far = this.slamWeight[0] + this.facing * S.areaFar;
     this.slamImpact = {
       ...S,
+      damage: S.damage * this.chainDamage, // 사슬 데미지 단위의 배수
       x: this.slamWeight[0],
       y: groundY,
       left: Math.min(near, far),
