@@ -213,15 +213,17 @@ export class Enemy {
 
   // 속박: 그 자리에 묶는다. 넉백으로 튕겨 나가지 않게 속도를 없앤다
   // time: 속박(제자리 고정) 시간, chainTime: 사슬이 이어져 있는 시간 (기본은 속박과 같음, 속박보다 짧을 수 없음)
-  // 사슬 연결은 다시 맞을 때마다 시간이 리셋(갱신)되지만, 속박(제자리 고정)은 끝난 직후 bindCooldown 동안 다시 걸리지 않는다
+  // 사슬 연결은 다시 맞을 때마다 시간이 리셋(갱신)된다. 속박(제자리 고정)은 이미 묶여 있으면 시간이 리셋되지 않고,
+  // 끝난 직후에는 bindCooldown 동안 다시 걸리지 않는다
   bind(time, anchor = null, chainTime = time) {
     if (!this.alive) return;
     if (anchor) this.bindAnchor = anchor;
     this.chainTimer = Math.max(this.chainTimer, time, chainTime);
     this.chainTotal = this.chainTimer;
-    if (this.bindTimer <= 0 && this.bindCooldown > 0) return; // 속박 내부 쿨타임 중: 연결만 갱신
-    this.bindTimer = Math.max(this.bindTimer, time);
-    this.bindTotal = this.bindTimer;
+    if (this.bindTimer > 0) return; // 이미 속박 중: 속박 시간은 리셋하지 않음 (연결만 갱신)
+    if (this.bindCooldown > 0) return; // 속박 내부 쿨타임 중: 연결만 갱신
+    this.bindTimer = time;
+    this.bindTotal = time;
     this.vx = 0;
     this.vy = Math.max(this.vy, 0);
   }
