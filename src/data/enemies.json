@@ -11,5 +11,34 @@
     "hitFlashTime": 0.1,
     "respawnTime": 0,
     "thrownGravity": 700
+  },
+  "charger": {
+    "width": 30,
+    "height": 30,
+    "maxHp": 150,
+    "moveSpeed": 50,
+    "gravity": 2200,
+    "maxFallSpeed": 900,
+    "knockbackDecel": 1400,
+    "stunTime": 0.35,
+    "hitFlashTime": 0.1,
+    "respawnTime": 0,
+    "thrownGravity": 700,
+    "color": "#d9822b",
+    "ai": {
+      "type": "charger",
+      "aggroRange": 420,
+      "aggroDy": 70,
+      "approachSpeed": 90,
+      "chargeRange": 280,
+      "minChargeDist": 70,
+      "windupTime": 0.5,
+      "chargeSpeed": 520,
+      "chargeMaxTime": 0.55,
+      "recoverTime": 0.9,
+      "cooldown": 0.6,
+      "burstRadius": 0,
+      "burstDamage": 1
+    }
   }
 }

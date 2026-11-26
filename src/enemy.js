@@ -3,6 +3,7 @@
 import { ENEMIES, GAME, TAGS } from './data/index.js';
 import { moveAndCollide, approach } from './physics.js';
 import { newStatus, updateStatus, speedMul, isFrozen } from './status.js';
+import { ChargerAI } from './chargerAI.js';
 
 export class Enemy {
   // 묶인 적 관련 알림 (main.js 가 연결·사슬 감옥 스킬을 처리하려고 채워 넣는다)
@@ -10,6 +11,7 @@ export class Enemy {
   //   onDied(enemy): 적이 죽음 (태그 효과: 번개 폭발·빙결 파편). 상태이상은 아직 남아 있음
   //   damageMul(enemy): takeHit 피해 배율 (빙결·묶인 적이 받는 피해 증가 태그)
   static hooks = { onBoundDied: null, onDied: null, damageMul: null };
+  static target = null; // 적 AI 가 쫓는 플레이어 (main.js 가 채워 넣음)
 
   constructor(type, spawn) {
     this.type = type;
@@ -29,6 +31,8 @@ export class Enemy {
     this.hp = this.stats.maxHp;
     this.alive = true;
     this.stunTimer = 0;
+    this.ai = this.stats.ai?.type === 'charger' ? new ChargerAI(this.stats.ai) : null; // 돌격형 등 행동 패턴 (없으면 단순 순찰)
+    this.shardBurst = null; // 돌진이 끝나며 터지는 결정 파편 (별의 힘 변이, combat.js 가 처리)
     this.status = newStatus(); // 상태이상 (status.js): 화상·둔화·빙결·감전·도주
     this.boss = this.stats.boss ?? false; // 보스는 스턴·빙결 면역, 최대 체력 비례 피해 절반, 붙잡기 면역
     this.flashTimer = 0;
@@ -135,10 +139,14 @@ export class Enemy {
     }
     if (this.stunTimer > 0) {
       this.stunTimer -= dt;
+      this.ai?.interrupt(); // 맞거나 묶이면 준비·돌진이 끊긴다
       this.vx = this.bindTimer > 0 || isFrozen(this) ? 0 : approach(this.vx, 0, S.knockbackDecel * dt);
     } else if (this.status.flee > 0) {
       this.dir = this.status.fleeDir; // 도주: 피해 온 반대쪽으로 빠르게
+      this.ai?.interrupt();
       this.vx = this.dir * S.moveSpeed * TAGS.execute.fleeSpeedMul * speedMul(this);
+    } else if (this.ai) {
+      this.vx = this.ai.update(this, dt, Enemy.target, world) * speedMul(this);
     } else {
       this.vx = this.dir * S.moveSpeed * speedMul(this);
     }
@@ -146,8 +154,8 @@ export class Enemy {
     this.vy = Math.min(this.vy + S.gravity * dt, S.maxFallSpeed);
     moveAndCollide(this, world, dt);
 
-    if (this.stunTimer <= 0 && this.onGround) {
-      if (this.hitWall || !this.groundAhead(world)) this.dir *= -1;
+    if (this.stunTimer <= 0 && this.onGround && this.ai?.state !== 'charge' && this.ai?.state !== 'windup') {
+      if (this.hitWall || !this.groundAhead(world)) this.dir *= -1; // 벽·낭떠러지에서 돌아섬 (돌격 준비·돌진 중에는 방향 유지)
     }
 
     if (this.y > world.pixelHeight + GAME.fallRespawnMargin) this.die();
@@ -261,8 +269,9 @@ export class Enemy {
     if (!this.alive) return;
     const px = Math.round(this.x - cam.x);
     const py = Math.round(this.y - cam.y);
-    ctx.fillStyle = this.flashTimer > 0 ? '#ffffff' : this.bindTimer > 0 ? '#7d5a8c' : '#c0392b';
+    ctx.fillStyle = this.flashTimer > 0 ? '#ffffff' : this.bindTimer > 0 ? '#7d5a8c' : this.stats.color ?? '#c0392b';
     ctx.fillRect(px, py, this.w, this.h);
+    this.ai?.draw(ctx, px, py, this);
     // 눈
     ctx.fillStyle = '#111';
     const eyeX = px + this.w / 2 + this.dir * 5;

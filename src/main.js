@@ -27,7 +27,8 @@ const ctx = canvas.getContext('2d');
 const world = new World(LEVELS[new URLSearchParams(location.search).get('level')] ?? LEVELS.bind);
 const skillTree = new SkillTree(PLAYER);
 const player = new Player(world.spawn.x, world.spawn.y, skillTree.stats);
-const enemies = world.enemySpawns.map((pos) => new Enemy('dummy', pos));
+const enemies = world.enemySpawns.map((pos) => new Enemy(pos.type, pos));
+Enemy.target = player; // 돌격형 같은 적이 쫓는 대상
 const cam = { x: 0, y: 0, w: canvas.width, h: canvas.height };
 const effects = new Effects();
 installBindHooks(player, enemies, effects);

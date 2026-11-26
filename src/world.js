@@ -1,4 +1,4 @@
-// 타일 기반 레벨. '#' = 땅, '.' = 빈칸, 'P' = 플레이어 시작 위치, 'E' = 테스트 적
+// 타일 기반 레벨. '#' = 땅, '.' = 빈칸, 'P' = 플레이어 시작 위치, 'E' = 테스트 적(더미), 'c' = 돌격형 적
 // 레벨 데이터는 src/data/levels/*.txt 에 있다.
 import { GAME } from './data/index.js';
 
@@ -8,12 +8,12 @@ export class World {
     this.height = rows.length;
     this.width = rows[0].length;
     this.spawn = { x: 0, y: 0 };
-    this.enemySpawns = []; // 'E' 위치
+    this.enemySpawns = []; // 적 위치와 종류 { x, y, type } (글자는 game.json 의 enemyChars)
     rows.forEach((row, ty) => {
       [...row].forEach((ch, tx) => {
         const pos = { x: tx * GAME.tileSize, y: ty * GAME.tileSize };
         if (ch === 'P') this.spawn = pos;
-        else if (ch === 'E') this.enemySpawns.push(pos);
+        else if (GAME.enemyChars[ch]) this.enemySpawns.push({ ...pos, type: GAME.enemyChars[ch] }); // 'E' 더미, 'c' 돌격형 …
       });
     });
   }
