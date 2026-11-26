@@ -4,20 +4,25 @@
   "levels": [
     {
       "name": "성흔 0",
-      "chargeWindupMul": 1.0
+      "chargeWindupMul": 1.0,
+      "rangedWindupMul": 1.0
     },
     {
       "name": "성흔 1",
-      "chargeWindupMul": 0.85
+      "chargeWindupMul": 0.85,
+      "rangedWindupMul": 0.85
     },
     {
       "name": "성흔 2",
-      "chargeWindupMul": 0.7
+      "chargeWindupMul": 0.7,
+      "rangedWindupMul": 0.7
     },
     {
       "name": "성흔 3",
-      "chargeWindupMul": 0.55
+      "chargeWindupMul": 0.55,
+      "rangedWindupMul": 0.55
     }
   ],
-  "chargeWindupMin": 0.15
+  "chargeWindupMin": 0.15,
+  "rangedWindupMin": 0.4
 }

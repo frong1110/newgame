@@ -4,6 +4,9 @@ import { ENEMIES, GAME, TAGS } from './data/index.js';
 import { moveAndCollide, approach } from './physics.js';
 import { newStatus, updateStatus, speedMul, isFrozen } from './status.js';
 import { ChargerAI } from './chargerAI.js';
+import { RangedAI } from './rangedAI.js';
+
+const AI_TYPES = { charger: ChargerAI, ranged: RangedAI }; // enemies.json 의 ai.type → 행동 패턴
 
 export class Enemy {
   // 묶인 적 관련 알림 (main.js 가 연결·사슬 감옥 스킬을 처리하려고 채워 넣는다)
@@ -12,6 +15,7 @@ export class Enemy {
   //   damageMul(enemy): takeHit 피해 배율 (빙결·묶인 적이 받는 피해 증가 태그)
   static hooks = { onBoundDied: null, onDied: null, damageMul: null };
   static target = null; // 적 AI 가 쫓는 플레이어 (main.js 가 채워 넣음)
+  static projectiles = null; // 원거리형이 쏘는 투사체 목록 (main.js 가 채워 넣음)
 
   constructor(type, spawn) {
     this.type = type;
@@ -31,7 +35,8 @@ export class Enemy {
     this.hp = this.stats.maxHp;
     this.alive = true;
     this.stunTimer = 0;
-    this.ai = this.stats.ai?.type === 'charger' ? new ChargerAI(this.stats.ai) : null; // 돌격형은 스폰·방 초기화 때마다 개체별 근접 시간을 새로 뽑음 // 돌격형 등 행동 패턴 (없으면 단순 순찰)
+    const AI = AI_TYPES[this.stats.ai?.type];
+    this.ai = AI ? new AI(this.stats.ai) : null; // 돌격형·원거리형 등 행동 패턴 (없으면 단순 순찰). 돌격형은 스폰·방 초기화 때마다 개체별 근접 시간을 새로 뽑음
     this.shardBurst = null; // 돌진이 끝나며 터지는 결정 파편 (별의 힘 변이, combat.js 가 처리)
     this.status = newStatus(); // 상태이상 (status.js): 화상·둔화·빙결·감전·도주
     this.boss = this.stats.boss ?? false; // 보스는 스턴·빙결 면역, 최대 체력 비례 피해 절반, 붙잡기 면역
@@ -165,10 +170,10 @@ export class Enemy {
     if (this.y > world.pixelHeight + GAME.fallRespawnMargin) this.die();
   }
 
-  // 진행 방향 발밑 앞쪽에 땅이 있는지
-  groundAhead(world) {
+  // dir(기본: 진행 방향) 쪽 발밑 앞에 땅이 있는지
+  groundAhead(world, dir = this.dir) {
     const T = GAME.tileSize;
-    const footX = this.dir > 0 ? this.x + this.w + 1 : this.x - 1;
+    const footX = dir > 0 ? this.x + this.w + 1 : this.x - 1;
     return world.isSolid(Math.floor(footX / T), Math.floor((this.y + this.h + 1) / T));
   }
 

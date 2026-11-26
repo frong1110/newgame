@@ -51,5 +51,35 @@
       "meleeTimeVariance": 0.2
     },
     "bindCooldown": 1.5
+  },
+  "archer": {
+    "width": 28,
+    "height": 30,
+    "maxHp": 150,
+    "moveSpeed": 50,
+    "gravity": 2200,
+    "maxFallSpeed": 900,
+    "knockbackDecel": 1400,
+    "stunTime": 0.35,
+    "hitFlashTime": 0.1,
+    "respawnTime": 0,
+    "thrownGravity": 700,
+    "bindCooldown": 1.5,
+    "color": "#4f86d9",
+    "ai": {
+      "type": "ranged",
+      "aggroRange": 560,
+      "fireRange": 500,
+      "keepMin": 200,
+      "keepMax": 340,
+      "approachSpeed": 60,
+      "retreatSpeed": 90,
+      "windupTime": 0.9,
+      "aimLockTime": 0.3,
+      "recoverTime": 0.7,
+      "cooldown": 0.8,
+      "projectileSpeed": 900,
+      "projectileRange": 640
+    }
   }
 }

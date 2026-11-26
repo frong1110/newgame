@@ -1,6 +1,6 @@
 // 투사체 (분동 갈래의 '쳐내기' 대상). 적이 쏜 것은 플레이어를 맞히고, 쳐내 반사한 것은 적을 맞힌다.
 // 아직 적이 투사체를 쏘지 않으므로 테스트용으로 P 키가 가장 가까운 적(없으면 앞쪽)에서 플레이어를 향해 하나 쏜다.
-import { PLAYER } from './data/index.js';
+import { PLAYER, GAME } from './data/index.js';
 import { emitTag } from './tags.js';
 import { overlaps } from './physics.js';
 
@@ -12,8 +12,9 @@ export class Projectiles {
     this.seq = 0;
   }
 
-  spawn(x, y, vx, vy, owner = 'enemy', damage = 1) {
-    this.list.push({ x, y, vx, vy, owner, damage, id: `proj${++this.seq}` });
+  // life: 날아갈 수 있는 시간(초). 기본은 무한 (원거리형은 사거리 / 탄속)
+  spawn(x, y, vx, vy, owner = 'enemy', damage = 1, life = Infinity) {
+    this.list.push({ x, y, vx, vy, owner, damage, life, id: `proj${++this.seq}` });
   }
 
   // 테스트용: 가장 가까운 적(없으면 플레이어 앞 300px)에서 플레이어를 향해 발사
@@ -36,6 +37,9 @@ export class Projectiles {
     for (const p of this.list) {
       p.x += p.vx * dt;
       p.y += p.vy * dt;
+      p.life -= dt;
+      if (p.life <= 0) continue; // 사거리 끝
+      if (world.isSolid(Math.floor(p.x / GAME.tileSize), Math.floor(p.y / GAME.tileSize))) continue; // 지형에 막힘
       const box = { x: p.x - R, y: p.y - R, w: R * 2, h: R * 2 };
       if (p.x < -50 || p.y < -200 || p.x > world.pixelWidth + 50 || p.y > world.pixelHeight + 200) continue;
       if (p.owner === 'enemy') {
@@ -65,6 +69,13 @@ export class Projectiles {
       ctx.beginPath();
       ctx.arc(p.x - view.x, p.y - view.y, R, 0, Math.PI * 2);
       ctx.fill();
+      // 빠른 탄: 진행 반대쪽으로 짧은 궤적선
+      ctx.strokeStyle = ctx.fillStyle;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(p.x - view.x, p.y - view.y);
+      ctx.lineTo(p.x - p.vx * 0.02 - view.x, p.y - p.vy * 0.02 - view.y);
+      ctx.stroke();
     }
   }
 }

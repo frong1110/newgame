@@ -35,6 +35,7 @@ const effects = new Effects();
 installBindHooks(player, enemies, effects);
 const projectiles = new Projectiles(); // 분동 갈래 쳐내기 대상 (P 키로 테스트 발사)
 player.projectiles = projectiles;
+Enemy.projectiles = projectiles; // 원거리형이 쏘는 탄도 같은 목록 (쳐내기·피격 처리가 같음)
 
 
 const STEP = GAME.fixedStep; // 고정 시간 간격 물리 (프레임레이트와 무관하게 같은 조작감)
