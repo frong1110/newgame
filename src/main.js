@@ -17,6 +17,7 @@ import { BindPull } from './bindPull.js';
 import { Projectiles } from './projectiles.js';
 import { TagEffects } from './tagEffects.js';
 import { drawHUD, drawVersion } from './hud.js';
+import { drawMenu, drawStageIntro, startButtonRect, stageButtonRect, hitRect } from './menuUI.js';
 
 const VERSION = __APP_VERSION__; // package.json 의 version (vite.config.js 에서 넣어 줌)
 document.title = `newgame v${VERSION}`;
@@ -27,7 +28,7 @@ const ctx = canvas.getContext('2d');
 // 맵: 기본은 결박 시험장. 주소에 ?level=level1 을 붙이면 예전 시험장 (회귀 재생용)
 DIFFICULTY.level = Math.max(0, Math.min(DIFFICULTY.levels.length - 1, Number(new URLSearchParams(location.search).get('difficulty')) || 0)); // ?difficulty=N
 const levelParam = new URLSearchParams(location.search).get('level');
-const roomList = GAME.stages[levelParam] ?? null; // ?level=stage1 이면 방 조각을 차례로 (문으로 다음 방)
+let roomList = GAME.stages[levelParam] ?? null; // ?level=stage1 이면 방 조각을 차례로 (문으로 다음 방)
 let roomIndex = 0;
 const world = new World(roomList ? LEVELS[roomList[0]] : (LEVELS[levelParam] ?? LEVELS.bind));
 const skillTree = new SkillTree(PLAYER);
@@ -50,8 +51,12 @@ const bindPull = new BindPull(player, enemies, effects, hitstop); // 결박 갈�
 player.bindPull = bindPull;
 const tagEffects = new TagEffects(player, enemies, effects, hitstop); // 태그 공명 효과 (번개·불·얼음·구속·처형)
 
-// 게임 모드: 'play' | 'choice'(방 클리어 후 스킬 고르기) | 'tree'(스킬 트리 보기)
-let mode = 'play';
+// 게임 모드: 'menu'(시작 화면·스테이지 선택) | 'intro'(스테이지 이름 배너, 그동안 정지) | 'play' | 'choice'(방 클리어 후 스킬 고르기) | 'tree'(스킬 트리 보기)
+// 주소에 ?level= 이 있으면 메뉴 없이 바로 시작 (회귀 재생·테스트용)
+let mode = levelParam ? 'play' : 'menu';
+let menuPage = 'title'; // 'title' | 'select'
+let menuCursor = 0;
+let intro = null; // { name, sub, t, total }
 let room = 1;
 let clearTimer = -1; // 적을 모두 처치한 뒤 선택 창이 뜨기까지 남은 시간
 let choices = [];
@@ -102,6 +107,45 @@ function updateTree() {
   pendingClick = null;
 }
 
+// ---- 시작 화면과 스테이지 시작 ----
+
+function updateMenu() {
+  const confirm = ['Enter', 'Space', 'KeyX'].some((k) => Input.wasPressed(k));
+  const click = pendingClick;
+  pendingClick = null;
+  if (menuPage === 'title') {
+    if (confirm || (click && hitRect(startButtonRect(canvas), click))) menuPage = 'select';
+    return;
+  }
+  const n = GAME.stageMenu.length;
+  if (Input.wasPressed('ArrowDown')) menuCursor = (menuCursor + 1) % n;
+  if (Input.wasPressed('ArrowUp')) menuCursor = (menuCursor + n - 1) % n;
+  if (Input.wasPressed('Escape')) menuPage = 'title';
+  if (click) {
+    const i = GAME.stageMenu.findIndex((_, k) => hitRect(stageButtonRect(canvas, k), click));
+    if (i >= 0) return startStage(i);
+  }
+  if (confirm) startStage(menuCursor);
+}
+
+// 고른 스테이지로 새 판을 시작하고, 이름 배너를 띄운다 (배너 동안 적·플레이어는 멈춤: 갑작스러운 공격 방지)
+function startStage(i) {
+  const s = GAME.stageMenu[i];
+  roomList = GAME.stages[s.id] ?? null;
+  roomIndex = 0;
+  skillTree.reset();
+  applySkills();
+  loadMap(roomList ? LEVELS[roomList[0]] : LEVELS[s.id]);
+  player.respawn(world.spawn.x, world.spawn.y);
+  projectiles.list = [];
+  bindPull.state = null;
+  room = 1;
+  clearTimer = -1;
+  updateCamera(1 / GAME.cameraFollow); // 배율 1 = 플레이어 위치로 바로 맞춤
+  intro = { name: s.name, sub: s.sub, t: GAME.stageIntroTime, total: GAME.stageIntroTime };
+  mode = 'intro';
+}
+
 // 한 판 초기화 (죽음 대신 R). 스킬도 모두 사라진다
 function resetRun() {
   skillTree.reset();
@@ -117,11 +161,14 @@ function resetRun() {
 }
 
 // 방 조각 i 를 불러온다: 맵·적을 제자리에서 바꾼다 (다른 모듈이 enemies 배열을 들고 있어서 새로 만들지 않음)
-function loadRoom(i) {
-  roomIndex = i;
-  world.load(LEVELS[roomList[i]]);
+function loadMap(rows) {
+  world.load(rows);
   enemies.length = 0;
   enemies.push(...world.enemySpawns.map((pos) => new Enemy(pos.type, pos)));
+}
+function loadRoom(i) {
+  roomIndex = i;
+  loadMap(LEVELS[roomList[i]]);
 }
 
 function nextRoom() {
@@ -187,6 +234,17 @@ function update(dt) {
     return;
   }
 
+  if (mode === 'menu') {
+    updateMenu();
+    return Input.endFrame();
+  }
+  if (mode === 'intro') {
+    intro.t -= dt;
+    if (intro.t <= 0) mode = 'play';
+    pendingClick = null;
+    return Input.endFrame();
+  }
+
   if (Input.wasPressed('KeyK') && mode !== 'choice') mode = mode === 'tree' ? 'play' : 'tree';
   if (mode === 'tree') {
     updateTree();
@@ -199,6 +257,7 @@ function update(dt) {
   }
 
   if (Input.wasPressed('KeyR')) resetRun();
+  if (Input.wasPressed('Escape')) { mode = 'menu'; menuPage = 'select'; return Input.endFrame(); } // 스테이지 다시 고르기
 
   player.update(dt, world, enemies);
   for (const e of enemies) e.update(dt, world);
@@ -253,6 +312,7 @@ function render() {
 function renderOverlay() {
   if (isTouch) setTouchPanelOpen(mode !== 'play');
   if (mode === 'choice') drawChoicePanel(ctx, choices, selected, skillTree, room);
+  else if (mode === 'intro') drawStageIntro(ctx, canvas, intro);
   else if (mode === 'tree') drawTreePanel(ctx, skillTree, skillTree.orderedIds(treePage)[treeCursor], treePage);
 }
 
@@ -266,9 +326,10 @@ function frame(now) {
     update(STEP);
     acc -= STEP;
   }
-  render();
+  if (mode === 'menu') drawMenu(ctx, canvas, menuPage, menuCursor);
+  else render();
   drawVersion(ctx, canvas, VERSION);
-  renderOverlay();
+  if (mode !== 'menu') renderOverlay();
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);

@@ -1,6 +1,12 @@
 {
   "tileSize": 32,
   "enemyChars": { "E": "dummy", "c": "charger", "a": "archer", "m": "clubGuard" },
+  "stageIntroTime": 2.2,
+  "stageMenu": [
+    { "id": "stage1", "name": "버려진 감옥", "sub": "1스테이지" },
+    { "id": "bind", "name": "결박 시험장", "sub": "테스트 맵" },
+    { "id": "level1", "name": "옛 시험장", "sub": "테스트 맵" }
+  ],
   "stages": { "stage1": ["cells", "pit", "labor", "gallery"] },
   "fixedStep": 0.008333333333333333,
   "maxFrameTime": 0.25,
