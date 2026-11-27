@@ -354,7 +354,7 @@ function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 // 개발 서버에서만 디버깅/자동 테스트용으로 상태를 노출 (배포 빌드에는 포함되지 않음)
 if (import.meta.env.DEV) {
   window.__game = {
-    playSfx, player, enemies, world, skillTree, Input, projectiles, bindPull, tagEffects,
+    playSfx, player, enemies, world, effects, skillTree, Input, projectiles, bindPull, tagEffects,
     get mode() { return mode; }, get room() { return room; }, get choices() { return choices; },
     get hitstop() { return hitstop.t; },
     // 자동 테스트용: 실시간 루프를 멈추고 고정 시간 간격으로 n 번 진행 (같은 입력이면 항상 같은 결과)
