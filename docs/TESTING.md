@@ -189,3 +189,6 @@ node tests/compare.cjs /tmp/base.json /tmp/after.json
 
 ## 하단 HUD 슬롯 (0.6.5)
 - 화면 왼쪽 아래 3칸이 보이고, 당기기·차징 후·충전 0 대시에서 부채꼴+초가 줄어듦, 칸 위에 마우스를 올리면 툴팁. 회전 차지(`cw_spin_charge`): X 꾹 → 놓으면 `player.chargeCooldownTimer`≈3, 쿨타임 중 X 꾹은 `charging` 이 켜지지 않고 기본 공격(회귀 재생의 연속 차지 장면은 쿨타임 때문에 달라질 수 있음).
+
+## 대시 쿨타임 3초 (0.6.6)
+- 기본 대시: 쓰고 3초 뒤에 다시 가능(`dashCooldownTimer`). 사슬 대시(`dash_chain`)는 충전 2회, 하나 쓰면 2.1초(3×0.7) 뒤 충전. HUD 슬롯 툴팁에 쿨타임이 3.0초/2.10초로 표시.

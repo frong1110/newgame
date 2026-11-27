@@ -229,7 +229,7 @@
   "dash": {
     "speed": 720,
     "duration": 0.16,
-    "cooldown": 0.45,
+    "cooldown": 3.0,
     "endSpeed": 260,
     "maxAirDashes": 1,
     "invincibleExtra": 0.05,
@@ -245,7 +245,7 @@
     "onPullArrive": "stop",
     "slamAfterZip": false,
     "charges": 1,
-    "rechargeTime": 0.5,
+    "rechargeTime": 3.0,
     "hunterEnabled": false,
     "hunterWindow": 2.0,
     "hunterDamage": 3,
