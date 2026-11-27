@@ -66,7 +66,7 @@ export function drawStageIntro(ctx, canvas, intro) {
   ctx.font = 'bold 46px sans-serif';
   ctx.fillText(intro.name, canvas.width / 2, canvas.height / 2);
   if (intro.sub) {
-    ctx.font = '18px sans-serif';
+    ctx.font = '16px sans-serif';
     ctx.fillStyle = 'rgba(255,255,255,0.75)';
     ctx.fillText(intro.sub, canvas.width / 2, canvas.height / 2 + 34);
   }

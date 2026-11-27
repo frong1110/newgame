@@ -57,6 +57,8 @@ let mode = levelParam ? 'play' : 'menu';
 let menuPage = 'title'; // 'title' | 'select'
 let menuCursor = 0;
 let intro = null; // { name, sub, t, total }
+let introEnabled = false; // 메뉴에서 시작한 판만 배너를 띄운다 (?level= 로 바로 시작한 판은 테스트용이라 멈추지 않음)
+let stageEntry = GAME.stageMenu.find((s) => s.id === (levelParam ?? 'bind')) ?? { name: levelParam, sub: '' }; // 지금 하고 있는 스테이지 (배너의 큰 제목)
 let room = 1;
 let clearTimer = -1; // 적을 모두 처치한 뒤 선택 창이 뜨기까지 남은 시간
 let choices = [];
@@ -128,9 +130,20 @@ function updateMenu() {
   if (confirm) startStage(menuCursor);
 }
 
-// 고른 스테이지로 새 판을 시작하고, 이름 배너를 띄운다 (배너 동안 적·플레이어는 멈춤: 갑작스러운 공격 방지)
+// 스테이지 이름(큰 제목) + 맵 이름(작은 소제목) 배너. 배너 동안 적·플레이어는 멈춘다 (갑작스러운 공격 방지)
+// 스테이지를 시작할 때와 다음 방으로 넘어갈 때마다 띄운다. 방 조각 목록이면 소제목은 그 방의 이름(game.json roomNames)
+function showIntro() {
+  if (!introEnabled) { mode = 'play'; return; }
+  const sub = roomList ? GAME.roomNames[roomList[roomIndex]] : stageEntry.sub;
+  intro = { name: stageEntry.name, sub, t: GAME.stageIntroTime, total: GAME.stageIntroTime };
+  mode = 'intro';
+}
+
+// 고른 스테이지로 새 판을 시작하고, 배너를 띄운다
 function startStage(i) {
   const s = GAME.stageMenu[i];
+  stageEntry = s;
+  introEnabled = true;
   roomList = GAME.stages[s.id] ?? null;
   roomIndex = 0;
   skillTree.reset();
@@ -142,8 +155,7 @@ function startStage(i) {
   room = 1;
   clearTimer = -1;
   updateCamera(1 / GAME.cameraFollow); // 배율 1 = 플레이어 위치로 바로 맞춤
-  intro = { name: s.name, sub: s.sub, t: GAME.stageIntroTime, total: GAME.stageIntroTime };
-  mode = 'intro';
+  showIntro();
 }
 
 // 한 판 초기화 (죽음 대신 R). 스킬도 모두 사라진다
@@ -176,7 +188,7 @@ function nextRoom() {
   // 방 조각 목록이면 다음 조각을 불러옴 (끝나면 처음으로. 스테이지 종료 연출은 아직 없음)
   if (roomList) loadRoom((roomIndex + 1) % roomList.length);
   else enemies.forEach((e) => e.reset());
-  mode = 'play';
+  showIntro();
 }
 
 function pickSkill(i) {
@@ -202,7 +214,7 @@ function updateDoors() {
   if (world.doors.some((d) => overlaps(b, d))) {
     nextRoom();
     player.respawn(world.spawn.x, world.spawn.y);
-    cam.x = 0; cam.y = 0;
+    updateCamera(1 / GAME.cameraFollow); // 새 방의 시작 위치로 카메라를 바로 맞춤
     projectiles.list = [];
     bindPull.state = null;
   }
