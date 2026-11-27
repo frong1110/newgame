@@ -6,6 +6,7 @@ import { newStatus, updateStatus, speedMul, isFrozen } from './status.js';
 import { ChargerAI } from './chargerAI.js';
 import { RangedAI } from './rangedAI.js';
 import { MeleeAI } from './meleeAI.js';
+import { updateYoyo } from './yoyo.js';
 
 const AI_TYPES = { charger: ChargerAI, ranged: RangedAI, melee: MeleeAI }; // enemies.json 의 ai.type → 행동 패턴
 
@@ -115,6 +116,7 @@ export class Enemy {
       // 공중 상태: 순찰 없이 날아감. 띄워진 적은 꼭대기에서 hangLeft 동안 머문 뒤 떨어진다
       // 땅에 닿으면(던져진 적은 벽에 닿아도) 공중 상태가 끝나고 경직 (다른 적과의 충돌은 main.js)
       const F = this.flight;
+      if (F.kind === 'yoyo') return updateYoyo(this, dt, world, Enemy.target); // 요요 투척: yoyo.js
       const hovering = F.kind === 'launch' && this.vy >= 0 && F.hangLeft > 0;
       if (hovering) {
         F.hangLeft -= dt;

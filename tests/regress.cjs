@@ -42,7 +42,7 @@ const BASE_URL = process.env.BASE_URL || 'http://localhost:5173/?level=level1';
   // C. 당기기·투척·띄우기·내리찍기·폭풍
   await sc('C', () => {
     setup([], 1500, 450, [[1680, 452, 0.4]]); tap('KeyC', 'pull', 80);
-    setup(['cw_spin_throw'], 1500, 450, [[1680, 452, 0.4], [1760, 452, 99]]); tap('KeyC', 'throw', 120);
+    setup(['cw_spin_throw'], 1500, 450, [[1680, 452, 0.4], [1760, 452, 99]]); key('ArrowRight', true); tap('KeyC', 'throw', 120); key('ArrowRight', false);
     setup(['cw_slam'], 1500, 450, [[1640, 452, 0.4], [1700, 452, 99]]); key('ArrowUp', true); tap('KeyC', 'launch', 40); key('ArrowUp', false); tap('KeyC', 'airslam', 120);
     setup(['cw_flail_storm'], 1500, 450, [[1560, 452, 99], [1590, 452, 99], [1470, 452, 99]]); key('KeyC', true); run(40, 'storm-hold'); key('KeyC', false); run(120, 'storm-fling');
     setup(['cw_flail_storm'], 1500, 450, [[1560, 452, 99], [1590, 452, 99]]); key('KeyC', true); run(40, 'storm-hold2'); key('ArrowDown', true); key('KeyC', false); run(60, 'storm-down'); key('ArrowDown', false); });

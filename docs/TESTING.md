@@ -179,3 +179,7 @@ node tests/compare.cjs /tmp/base.json /tmp/after.json
 - 당기기: 적을 앞 48px 에 세우고 stunTimer≈0.6, `enemy.pullLockTimer`=2 동안 재당기기 무시, `enemy.boss=true` 는 당겨지지 않음(사슬 되감김).
 - 쳐내기 축적(`cw_deflect_store`): 회전 차지 중 적에게 닿으면 `player.storeCharges` 증가(적당 0.5초에 1), 방출 때 `releaseStore` 로 넘어가 `chargeDamageMul` 에 ×(1+0.15×충전).
 - 반동(`dash_recoil`): 사슬 대시가 적에 도착하면 `enemy.stunTimer`≈0.59, `player.dodgeTimer`≈0.2, 바로 다음 휘두르기의 `chargeDamageMul`=1.5(한 번만).
+
+## 요요 투척·이동 갈래 (0.6.3)
+- 요요 투척(`cw_spin_throw`): ArrowRight 를 누른 채 C → 적이 앞으로 날아가(`flight.leg`='out') 약 260px 뒤 되감겨('back') 플레이어 앞 ≈45px 에 서고 경직 0.6. 경로에 있는 적은 가는 길·오는 길 각 10(=1단위) 씩 총 20, 던진 적은 부딪힌 적마다 구간당 10 추가. C 만 누르면 일반 당기기(flight 없음).
+- 이동 갈래: `dash_hunter` 를 배우면(선행 자동) `chain.charges`=2, `rechargeTime`=0.35, `dash.directions`=8. 사슬 이동 뒤 `hunterTimer`>0 에서 착지하면 주변 `hunterDamage`×10=30 충격파. `dash_diagonal`·`dash_slam` 은 숨김 페이지(회귀 재생용 id 유지).

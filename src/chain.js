@@ -8,13 +8,14 @@
 //     → 잠깐 멈칫(latch: 사슬이 팽팽해지며 떨림, 플레이어 정지)
 //     → 지형: onTerrain 'zip' 이면 그 위치로 날아감, 'retract' 면 튕겨 나옴(걸리지 않음)
 //     → 적: onEnemy 'zip' 이면 적에게 날아가 붙으며 피해, 'pull' 이면 적을 끌어옴
-//            끌어온 뒤 onPullArrive 'stop' 이면 앞에 세움, 'throw' 면 휘둘러 앞으로 던짐(회전 투척)
+//            끌어온 뒤 onPullArrive 'stop' 이면 앞에 세움, 'throw' 면 앞 입력일 때 요요 투척(yoyo.js)
 //            'throw' 에서 당기는 동안 ↑ 를 누르고 있었으면 대신 위로 띄움(launch)
 //   철퇴 폭풍(C 길게 누르기, 여러 적을 붙잡아 돌리다 날림)은 flailStorm.js
 //   내리찍기 (startSlam): 공중 상태 적을 따라가 감고 → 멈칫 → 바닥에 꽂음(slamdown) → 충격파
 import { GAME } from './data/index.js';
 import { moveAndCollide, overlaps, overlapsSolid } from './physics.js';
 import { emitTag } from './tags.js';
+import { startYoyo } from './yoyo.js';
 
 const SUBSTEP = 4; // 사슬 끝이 한 번에 움직이는 최대 거리(px). 얇은 지형을 뚫지 않게
 
@@ -50,7 +51,8 @@ export class Chain {
     const C = p.stats[this.key];
     this.phase = 'throw';
     this.homing = null; // 내리찍기: 따라갈 적
-    this.launchWanted = false; // 당기는 동안 ↑ 를 눌렀는지 (회전 투척 띄우기)
+    this.launchWanted = false; // 당기는 동안 ↑ 를 눌렀는지 (요요 투척 띄우기)
+    this.forwardWanted = false; // 당기기를 시작할 때·당기는 동안 앞 입력이 있었는지 (요요 투척)
     this.dx = dx;
     this.dy = dy;
     [this.hx, this.hy] = center(p);
@@ -329,6 +331,7 @@ export class Chain {
   updatePull(dt, p, C) {
     this.timer += dt;
     if (p.holdingUp) this.launchWanted = true;
+    if (p.holdingForward) this.forwardWanted = true;
     const enemy = this.target;
     if (!enemy || !enemy.alive) return this.cancel();
     const [cx, cy] = center(p);
@@ -342,16 +345,17 @@ export class Chain {
       enemy.pull = null;
       const hitId = `${this.key}-${this.count}`;
       const throwing = C.onPullArrive === 'throw';
-      if (throwing && (this.launchWanted || p.holdingUp)) {
+      const launching = throwing && (this.launchWanted || p.holdingUp);
+      if (launching) {
         // 회전 투척 + ↑: 위로 띄운다 (공중 상태 → 내리찍기로 이어 칠 수 있음)
         enemy.takeHit(C.launchSelfDamage * p.chainDamage, p.facing, 0, 0, hitId);
         enemy.launch(C.launchHeight, C.launchHangTime, C.launchGravity);
         this.hitstop = C.throwHitstop;
-      } else if (throwing) {
-        // 회전 투척: 끌어온 적을 휘둘러 바라보는 쪽으로 던진다. 던진 적도, 날아가다 맞은 적도 피해
+      } else if (throwing && (this.forwardWanted || p.holdingForward)) {
+        // 요요 투척(앞 + 당기기): 끌어온 적을 사슬이 붙은 채 던지고 최대 거리에서 되감는다 (왕복 2회 적중: yoyo.js)
         const dir = p.facing;
         enemy.takeHit(C.throwSelfDamage * p.chainDamage, dir, 0, 0, hitId);
-        enemy.throwAway(dir, C, hitId, p.chainDamage);
+        startYoyo(enemy, dir, C, hitId, p.chainDamage);
         this.hitstop = C.throwHitstop;
       } else {
         const dir = Math.sign(this.hx - cx) || p.facing;

@@ -78,8 +78,8 @@
         },
         {
           "id": "cw_spin_throw",
-          "name": "회전 투척",
-          "description": "당긴 적을 휘둘러 던짐 (↑ 면 위로 띄움)",
+          "name": "요요 투척",
+          "description": "앞+C: 당긴 적을 던졌다 되감음(왕복 2회 적중, 벽 추가 피해). ↑ 면 띄움",
           "requires": [],
           "pos": [
             1,
@@ -203,9 +203,9 @@
       "name": "대시 (이동)",
       "skills": [
         {
-          "id": "dash_diagonal",
-          "name": "대각선 대시",
-          "description": "↑↓ 와 함께 쓰면 위·아래·대각선으로 대시",
+          "id": "dash_chain",
+          "name": "사슬 대시",
+          "description": "사슬로 날아감(대각선 포함). 충전 2회, 재사용 -30%",
           "requires": [],
           "pos": [
             0,
@@ -213,28 +213,24 @@
           ],
           "effects": [
             {
-              "stat": "dash.directions",
-              "op": "set",
-              "value": 8
-            }
-          ]
-        },
-        {
-          "id": "dash_chain",
-          "name": "사슬",
-          "description": "사슬을 던져 걸린 곳으로 날아감 (적이면 붙으며 피해)",
-          "requires": [
-            "dash_diagonal"
-          ],
-          "pos": [
-            0,
-            1
-          ],
-          "effects": [
-            {
               "stat": "dash.mode",
               "op": "set",
               "value": "chain"
+            },
+            {
+              "stat": "dash.directions",
+              "op": "set",
+              "value": 8
+            },
+            {
+              "stat": "chain.charges",
+              "op": "set",
+              "value": 2
+            },
+            {
+              "stat": "chain.rechargeTime",
+              "op": "mul",
+              "value": 0.7
             }
           ]
         },
@@ -247,7 +243,7 @@
           ],
           "pos": [
             0,
-            2
+            1
           ],
           "effects": [
             {
@@ -258,19 +254,19 @@
           ]
         },
         {
-          "id": "dash_slam",
-          "name": "내리꽂기",
-          "description": "사슬로 이동한 직후 공격하면 땅에 내리꽂으며 주변에 큰 피해",
+          "id": "dash_hunter",
+          "name": "천장 사냥꾼",
+          "description": "사슬 이동 중 무적, 이동 뒤 착지하면 범위 공격",
           "requires": [
             "dash_recoil"
           ],
           "pos": [
             0,
-            3
+            2
           ],
           "effects": [
             {
-              "stat": "chain.slamAfterZip",
+              "stat": "chain.hunterEnabled",
               "op": "set",
               "value": true
             }
@@ -562,6 +558,48 @@
               "stat": "tags.execute",
               "op": "add",
               "value": 2
+            }
+          ]
+        }
+      ]
+    },
+    "dashLegacy": {
+      "name": "대시 (이전 설계, 숨김)",
+      "page": 2,
+      "skills": [
+        {
+          "id": "dash_diagonal",
+          "name": "대각선 대시",
+          "description": "↑↓ 와 함께 쓰면 위·아래·대각선으로 대시",
+          "requires": [],
+          "pos": [
+            0,
+            0
+          ],
+          "effects": [
+            {
+              "stat": "dash.directions",
+              "op": "set",
+              "value": 8
+            }
+          ]
+        },
+        {
+          "id": "dash_slam",
+          "name": "내리꽂기",
+          "description": "사슬로 이동한 직후 공격하면 땅에 내리꽂으며 주변에 큰 피해",
+          "requires": [
+            "dash_chain"
+          ],
+          "pos": [
+            0,
+            1
+          ],
+          "effects": [
+            {
+              "stat": "chain.slamAfterZip",
+              "op": "set",
+              "value": true
             }
           ]
         }
