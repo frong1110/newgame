@@ -9,8 +9,13 @@ import { GAME } from './data/index.js';
 const T = GAME.touch;
 
 // 스킬 트리·선택 창이 열려 있는지 알려 준다 (main.js 가 매 프레임 호출)
+// 패드·버튼이 숨겨질 때 손가락을 떼면 pointerup 을 놓칠 수 있다 → 창이 열리는 순간 모든 화면 입력을 풀어 둔다
+const resetters = [];
+let panelOpen = false;
 export function setTouchPanelOpen(open) {
   document.body.classList.toggle('panel-open', open);
+  if (open && !panelOpen) resetters.forEach((fn) => fn());
+  panelOpen = open;
 }
 
 export function setupTouchControls() {
@@ -42,18 +47,24 @@ export function setupTouchControls() {
   // 버튼: 누르는 동안 키를 누른 상태로 둔다 (손가락마다 따로 추적)
   for (const btn of root.querySelectorAll('[data-key]')) {
     const code = btn.dataset.key;
+    let btnPointer = null;
     const down = (e) => {
       e.preventDefault();
+      btnPointer = e.pointerId;
       btn.setPointerCapture?.(e.pointerId);
       btn.classList.add('on');
       Input.pressVirtual(code);
       navigator.vibrate?.(T.vibrateMs);
     };
     const up = (e) => {
-      e.preventDefault();
+      e.preventDefault?.();
+      btnPointer = null;
       btn.classList.remove('on');
       Input.releaseVirtual(code);
     };
+    resetters.push(() => up({}));
+    // 버튼 밖에서 손가락을 떼거나 버튼이 가려져 신호를 놓쳐도 풀리게 (같은 손가락의 pointerup/cancel 을 창 전체에서 받는다)
+    for (const ev of ['pointerup', 'pointercancel']) window.addEventListener(ev, (e) => { if (e.pointerId === btnPointer) up({}); });
     btn.addEventListener('pointerdown', down);
     btn.addEventListener('pointerup', up);
     btn.addEventListener('pointercancel', up);
@@ -82,17 +93,12 @@ function setupDpad(pad) {
   const knob = pad.querySelector('.knob');
   const DIRS = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'];
   let pointer = null;
-  const held = new Set();
 
+  // 누름 상태는 Input 쪽(virtualDown)을 기준으로 본다 — 창이 포커스를 잃어 Input 이 지워져도 패드가 '이미 누름'으로 착각하지 않게
   const set = (codes) => {
     for (const c of DIRS) {
-      if (codes.has(c) && !held.has(c)) {
-        held.add(c);
-        Input.pressVirtual(c);
-      } else if (!codes.has(c) && held.has(c)) {
-        held.delete(c);
-        Input.releaseVirtual(c);
-      }
+      if (codes.has(c) && !Input.isVirtualDown(c)) Input.pressVirtual(c);
+      else if (!codes.has(c) && Input.isVirtualDown(c)) Input.releaseVirtual(c);
     }
   };
 
@@ -118,21 +124,30 @@ function setupDpad(pad) {
     set(codes);
   };
 
-  const end = (e) => {
-    if (e.pointerId !== pointer) return;
+  const reset = () => {
     pointer = null;
     knob.style.transform = '';
     set(new Set());
   };
+  const end = (e) => {
+    if (e.pointerId !== pointer) return;
+    reset();
+  };
+  resetters.push(reset);
+  // 패드가 가려진 사이 손가락을 떼는 등 pointerup 을 놓쳐도 풀리게, 창 전체에서도 받는다. 창이 가려지면 모두 해제
+  for (const ev of ['pointerup', 'pointercancel']) window.addEventListener(ev, end);
+  window.addEventListener('blur', reset);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) reset(); });
 
   pad.addEventListener('pointerdown', (e) => {
     e.preventDefault();
-    if (pointer !== null) return;
+    // 이전 손가락이 아직 남아 있는 것으로 기억돼 있어도(신호 유실) 새 터치를 받는다
     pointer = e.pointerId;
     pad.setPointerCapture?.(e.pointerId);
     move(e);
   });
   pad.addEventListener('pointermove', (e) => {
+    if (pointer === null && e.buttons) pointer = e.pointerId; // 손가락은 아직 패드 위인데 상태가 풀려 있었다면(blur 등) 다시 이어받는다
     if (e.pointerId === pointer) move(e);
   });
   pad.addEventListener('pointerup', end);
