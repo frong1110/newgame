@@ -5,8 +5,9 @@ import { moveAndCollide, approach } from './physics.js';
 import { newStatus, updateStatus, speedMul, isFrozen } from './status.js';
 import { ChargerAI } from './chargerAI.js';
 import { RangedAI } from './rangedAI.js';
+import { MeleeAI } from './meleeAI.js';
 
-const AI_TYPES = { charger: ChargerAI, ranged: RangedAI }; // enemies.json 의 ai.type → 행동 패턴
+const AI_TYPES = { charger: ChargerAI, ranged: RangedAI, melee: MeleeAI }; // enemies.json 의 ai.type → 행동 패턴
 
 export class Enemy {
   // 묶인 적 관련 알림 (main.js 가 연결·사슬 감옥 스킬을 처리하려고 채워 넣는다)

@@ -165,3 +165,6 @@ node tests/compare.cjs /tmp/base.json /tmp/after.json
 
 ## 문·한 방향 발판 (`?level=stage1`)
 - 발판(`=`): 아래에서 점프하면 통과하고 위에 착지(발바닥 y = 발판 윗면). 문(`D`): 적이 남아 있으면 닫힘(회색), 전멸하면 하늘색으로 열리고 닿으면 시작 위치로 이동·적 재배치.
+
+## 근접형·방 조각 (`?level=stage1`)
+- 근접형: 가까이 가면 idle → windup(0.35) → active(0.12) → recover(0.6) 순환, 맞으면 플레이어 피격(무적 시작). 방 조각 4개: 적 전멸 후 문에 닿으면 cells → pit → labor → gallery → cells 로 이동(적 종류: 각 방 설명은 CLAUDE.md).
