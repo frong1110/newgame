@@ -35,6 +35,13 @@ function resolveSlam(player, enemies, effects, hitstop) {
 
 // 철퇴 폭풍으로 날려진 적이 벽·바닥에 닿아 터짐: 그 적이 피해·기절, 반경 안 다른 적은 피해
 let blastSeq = 0;
+// 요요 투척 적중 임팩트: 번쩍임 + 충격파 + 화면 흔들림 + 효과음 (mul 배로 키움). 수치는 player.json pullChain.yoyoImpact*
+function yoyoImpact(effects, C, x, y, mul) {
+  effects.addTipHit(x, y);
+  effects.addImpact(x, y, C.yoyoImpactRadius * mul, C.yoyoImpactShake * mul, C.yoyoImpactShakeTime, C.yoyoImpactWaveTime);
+  playSfx('tipHit');
+}
+
 function resolveBlasts(enemies, effects, hitstop) {
   for (const e of enemies) {
     const b = e.blast;
@@ -94,6 +101,11 @@ export function resolveCombat(player, enemies, effects, hitstop) {
         if (player.usesChainWeapon) emitTag(hit.max ? 'releaseHit' : 'tipHit', { enemy: e, damage: hit.damage, point: hit.point });
       }
     }
+    // 요요 투척으로 던져진 적이 벽에 부딪힘: 더 큰 충격
+    if (e.flight?.wallHit) {
+      yoyoImpact(effects, e.flight.C, e.flight.wallHit.x, e.flight.wallHit.y, e.flight.C.yoyoWallImpactMul);
+      e.flight.wallHit = null;
+    }
     // 던져져 날아가는 적(공중 상태) → 다른 적 (회전 투척). 띄워진 적은 피해 없음
     if (e.flight && e.flight.damage > 0) {
       for (const other of enemies) {
@@ -102,6 +114,7 @@ export function resolveCombat(player, enemies, effects, hitstop) {
         if (T.group != null && other.flight?.group === T.group) continue; // 같이 날린 적끼리는 서로 피해 없음
         if (other.takeHit(T.damage, Math.sign(e.vx) || 1, T.knockbackX, T.knockbackY, T.hitId)) {
           hitstop.t = T.hitstop;
+          if (T.kind === 'yoyo') yoyoImpact(effects, T.C, (e.x + e.w / 2 + other.x + other.w / 2) / 2, (e.y + e.h / 2 + other.y + other.h / 2) / 2, 1); // 요요 투척 적중 임팩트
           // 요요 투척: 던진 적도 다른 적에 부딪히면 추가 피해 (구간당 상대마다 1회)
           if (T.bumpDamage && !T.bumped.has(other)) {
             T.bumped.add(other);

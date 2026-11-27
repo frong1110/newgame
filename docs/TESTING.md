@@ -192,3 +192,6 @@ node tests/compare.cjs /tmp/base.json /tmp/after.json
 
 ## 대시 쿨타임 3초 (0.6.6)
 - 기본 대시: 쓰고 3초 뒤에 다시 가능(`dashCooldownTimer`). 사슬 대시(`dash_chain`)는 충전 2회, 하나 쓰면 2.1초(3×0.7) 뒤 충전. HUD 슬롯 툴팁에 쿨타임이 3.0초/2.10초로 표시.
+
+## 터치 HUD 위치·요요 임팩트 (0.6.7)
+- `?touch=1` 로 모바일 크기(844×390)에서 슬롯 3칸이 이동 패드 오른쪽 바닥에 보임. 요요 투척(앞+C)으로 경로에 적 2명이 있으면 `effects.waves` 가 왕복 4회 생기고 `effects.shake.mag`≈4.

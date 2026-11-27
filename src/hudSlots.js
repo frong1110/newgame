@@ -5,10 +5,21 @@
 // 이름·키·설명은 game.json 의 hudSlots, 쿨타임은 플레이어 수치에서 읽는다.
 import { GAME } from './data/index.js';
 
-const SIZE = 60, GAP = 14, BOTTOM = 22, LEFT = 16, TOUCH_LIFT = 150; // 터치 기기는 왼쪽 아래 방향 패드와 겹치지 않게 위로 올린다
+const SIZE = 60, GAP = 14, BOTTOM = 22, LEFT = 16, TOUCH_CSS_SIZE = 48; // 터치 기기는 방향 패드 오른쪽의 바닥 빈 공간에 놓는다
 
-function layout(canvas, lift = 0) {
-  return GAME.hudSlots.map((s, i) => ({ ...s, x: LEFT + i * (SIZE + GAP), y: canvas.height - BOTTOM - SIZE - lift }));
+// 슬롯 위치. PC: 왼쪽 아래. 터치: 방향 패드(DOM)의 오른쪽, 패드 바닥에 맞춰 (캔버스는 화면에 맞게 줄어들므로 화면 픽셀 → 캔버스 좌표로 바꾼다)
+function layout(canvas, isTouch) {
+  let x0 = LEFT, bottom = BOTTOM, size = SIZE;
+  const pad = isTouch ? document.querySelector('[data-dpad]') : null;
+  const pr = pad?.getBoundingClientRect();
+  if (pr && pr.width > 0) {
+    const cr = canvas.getBoundingClientRect();
+    const k = canvas.width / cr.width;
+    size = TOUCH_CSS_SIZE * k;
+    x0 = (pr.right - cr.left) * k + 14 * k;
+    bottom = (cr.bottom - pr.bottom) * k + 4 * k;
+  }
+  return GAME.hudSlots.map((s, i) => ({ ...s, size, x: x0 + i * (size + GAP * (size / SIZE)), y: canvas.height - bottom - size }));
 }
 
 // 슬롯 하나의 현재 상태 { cd(남은 초), total(전체 초), gauge(0~1 또는 null), badge(숫자 또는 null), dim, active, extra(툴팁 쿨타임 줄) }
@@ -106,9 +117,13 @@ export function trackHudMouse(canvas) {
 // mouse: 캔버스 좌표의 마우스 위치(없으면 null) — 칸 위면 툴팁을 그린다
 export function drawHudSlots(ctx, canvas, player, mouse, isTouch = false) {
   let hovered = null;
-  for (const s of layout(canvas, isTouch ? TOUCH_LIFT : 0)) {
+  for (const s of layout(canvas, isTouch)) {
     const st = stateOf(s.id, player);
-    const { x, y } = s;
+    const f = s.size / SIZE; // 터치는 슬롯 크기가 다르므로 60px 기준으로 그린 것을 확대·축소
+    ctx.save();
+    ctx.translate(s.x, s.y);
+    ctx.scale(f, f);
+    const x = 0, y = 0;
     ctx.globalAlpha = st.dim ? 0.45 : 1;
     ctx.fillStyle = 'rgba(15,20,28,0.78)';
     ctx.fillRect(x, y, SIZE, SIZE);
@@ -158,14 +173,15 @@ export function drawHudSlots(ctx, canvas, player, mouse, isTouch = false) {
       ctx.fillRect(x, y + SIZE + 4, SIZE * st.gauge, 5);
     }
     ctx.textAlign = 'left';
-    if (mouse && mouse.x >= x && mouse.x <= x + SIZE && mouse.y >= y && mouse.y <= y + SIZE) hovered = { s, st };
+    ctx.restore();
+    if (mouse && mouse.x >= s.x && mouse.x <= s.x + s.size && mouse.y >= s.y && mouse.y <= s.y + s.size) hovered = { s, st };
   }
   if (hovered) drawTooltip(ctx, canvas, hovered.s, hovered.st);
 }
 
 function drawTooltip(ctx, canvas, s, st) {
   const w = 250, pad = 10;
-  const x = Math.min(canvas.width - w - 8, Math.max(8, s.x + SIZE / 2 - w / 2));
+  const x = Math.min(canvas.width - w - 8, Math.max(8, s.x + s.size / 2 - w / 2));
   ctx.font = '13px sans-serif';
   const lines = [s.desc, st.extra];
   // 높이를 먼저 계산 (줄바꿈 수)

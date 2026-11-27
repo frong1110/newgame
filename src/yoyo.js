@@ -45,6 +45,7 @@ export function updateYoyo(e, dt, world, player) {
     F.traveled += Math.abs(e.x - x0);
     if (e.hitWall) {
       e.takeHit(C.yoyoWallDamage * F.unit, -F.dir, 0, 0, `${F.baseId}-wall`); // 벽에 부딪힌 추가 피해
+      F.wallHit = { x: e.x + e.w / 2 + F.dir * e.w / 2, y: e.y + e.h / 2 }; // combat.js 가 충격 이펙트를 낸다
       turn(F);
     } else if (F.traveled >= C.yoyoRange) turn(F);
     return;
