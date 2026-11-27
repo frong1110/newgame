@@ -31,6 +31,7 @@ window.addEventListener('blur', () => {
 
 export const Input = {
   isDown,
+  isVirtualDown: (code) => virtualDown.has(code), // 화면 버튼이 지금 누르고 있는 키 (touch.js 가 자기 상태 대신 이걸 기준으로 삼는다)
   wasPressed: (code) => pressed.has(code),
   wasReleased: (code) => released.has(code),
   // 화면 버튼에서 호출
