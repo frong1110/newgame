@@ -26,9 +26,10 @@ export class PlayerSpin {
 
   // 방출 차지 배율 × 처형 태그 3단계 강화(처형 후 3초 안의 다음 휘두르기 +30%)
   get chargeDamageMul() {
-    const charge = this.releaseCharge != null ? 1 + this.releaseCharge * this.weapon.chargeDamageBonus : 1;
+    const charge = this.releaseCharge != null ? (1 + this.releaseCharge * this.weapon.chargeDamageBonus) * (1 + this.releaseStore * this.weapon.storeDamagePerCharge) : 1;
     const buffed = this.execBuffTimer > 0 || this.execBuffSwing === this.attackId;
-    return charge * (buffed ? 1 + TAGS.execute.buffBonus : 1);
+    const recoil = this.recoilSwing === this.attackId ? 1 + this.stats.chain.recoilBonus : 1;
+    return charge * recoil * (buffed ? 1 + TAGS.execute.buffBonus : 1);
   }
 
   // 돌고 있는 분동의 쳐내기·적중 반경 (회전 스택이 쌓일수록 넓어짐)
@@ -53,6 +54,7 @@ export class PlayerSpin {
   interruptCharge() {
     if (this.charging) {
       this.storedShots = 0;
+      this.storeCharges = 0;
       this.spinStacks = 0;
       this.spinStackTimer = 0;
       this.spinAngle = 0;
@@ -108,7 +110,7 @@ export class PlayerSpin {
 
   // 도는 분동이 적에게 닿으면 (채찍 폭풍) 피해 + 회전 스택
   spinHits(enemies) {
-    if (!this.stormOn) return;
+    if (!this.stormOn && !this.weapon.storeEnabled) return;
     const W = this.weapon, r = this.spinRadius;
     const cx = this.x + this.w / 2, cy = this.y + this.h / 2;
     for (const e of enemies) {
@@ -116,6 +118,8 @@ export class PlayerSpin {
       const dx = Math.max(e.x - cx, 0, cx - (e.x + e.w)), dy = Math.max(e.y - cy, 0, cy - (e.y + e.h));
       if (Math.hypot(dx, dy) > r) continue;
       this.spinHitCd.set(e, W.stormHitCooldown);
+      if (W.storeEnabled) this.storeCharges = Math.min(W.storeMax, this.storeCharges + 1); // 쳐내기 축적: 적에게 닿을 때마다 충전 (적 한 명당 stormHitCooldown 에 1회)
+      if (!this.stormOn) continue;
       e.takeHit(W.stormHitDamage * this.chainDamage, Math.sign(e.x + e.w / 2 - cx) || 1, W.deflectKnockbackX, W.deflectKnockbackY, `spin${this.attackId}-${this.spinHitSeq++}`);
       this.addSpinStack();
     }
@@ -127,7 +131,10 @@ export class PlayerSpin {
     const cx = this.x + this.w / 2, cy = this.y + this.h / 2;
     if (Math.hypot(p.x - cx, p.y - cy) > this.spinRadius + 6) return false;
     const W = this.weapon;
-    if (W.storeEnabled && this.storedShots < W.storeMax) this.storedShots++;
+    if (W.storeEnabled && this.storedShots < W.storeMax) {
+      this.storedShots++;
+      this.storeCharges = Math.min(W.storeMax, this.storeCharges + 1);
+    }
     else this.projectiles?.spawn(p.x, p.y, -p.vx, -p.vy, 'player', W.deflectDamage * this.chainDamage); // 저장 없거나 가득 차면 바로 반사
     this.addSpinStack();
     return true;
@@ -143,6 +150,8 @@ export class PlayerSpin {
     this.startAttack(W.chargeReleaseStep, enemies);
     const n = this.storedShots;
     this.storedShots = 0;
+    this.releaseStore = this.storeCharges; // 충전 1개당 방출 피해 +storeDamagePerCharge
+    this.storeCharges = 0;
     const cx = this.x + this.w / 2, cy = this.y + this.h / 2;
     for (let i = 0; i < n; i++) {
       const spread = maxed ? W.stormFanAngle : W.reflectFanAngle; // 최대 스택은 전방으로 훨씬 넓게

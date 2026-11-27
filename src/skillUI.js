@@ -59,7 +59,11 @@ export function drawChoicePanel(ctx, choices, selected, skillTree, room) {
 }
 
 // 트리 화면의 노드 위치 계산 (그리기와 클릭 판정이 같이 쓴다). 트리는 가로로 나란히 놓는다
-const NODE_W_MAX = 196, NODE_H = 86, COL_GAP = 16, ROW_GAP = 22, TREE_GAP = 44, TOP = 168;
+const NODE_W_MAX = 196, COL_GAP = 16, TREE_GAP = 44;
+// 단계가 4개 이상인 트리는 칸을 낮춰서 화면 아래에 걸리지 않게 한다 (다른 트리는 그대로)
+const rowsOf = (t) => Math.max(...t.skills.map((s) => s.pos[1])) + 1;
+const cellOf = (t) => (rowsOf(t) >= 4 ? { h: 70, gap: 8 } : { h: 86, gap: 22 });
+const TOP = 168;
 export function treeLayout(skillTree, page = 0) {
   const trees = Object.values(skillTree.trees).filter((t) => (t.page ?? 0) === page);
   const colsOf = (t) => Math.max(...t.skills.map((s) => s.pos[0])) + 1;
@@ -72,9 +76,10 @@ export function treeLayout(skillTree, page = 0) {
   const nodes = [];
   let left = W / 2 - total / 2;
   for (const tree of trees) {
+    const cell = cellOf(tree);
     headers.push({ name: tree.name, x: left, w: widthOf(tree), branches: tree.branches, nodeW: NODE_W });
     for (const s of tree.skills) {
-      nodes.push({ skill: s, x: left + s.pos[0] * (NODE_W + COL_GAP), y: TOP + s.pos[1] * (NODE_H + ROW_GAP), w: NODE_W, h: NODE_H });
+      nodes.push({ skill: s, x: left + s.pos[0] * (NODE_W + COL_GAP), y: TOP + s.pos[1] * (cell.h + cell.gap), w: NODE_W, h: cell.h });
     }
     left += widthOf(tree) + TREE_GAP;
   }

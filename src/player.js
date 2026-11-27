@@ -68,6 +68,10 @@ export class Player {
     this.releaseMax = false;
     this.execBuffTimer = 0; // 처형 태그 3단계: 다음 공격 강화 남은 시간
     this.execBuffSwing = -1; // 강화가 적용 중인 휘두르기 id
+    this.storeCharges = 0; // 쳐내기 축적 충전 수 (쳐낸 투사체 + 적 접촉). 방출 피해에 반영
+    this.releaseStore = 0;
+    this.recoilTimer = 0; // 반동(이동 갈래 2단계): 사슬 이동 직후 첫 공격 강화 남은 시간
+    this.recoilSwing = -1; // 강화가 적용 중인 휘두르기 id
     this.storedShots = 0; // 쳐내기 축적: 분동에 저장된 투사체 수
     this.spinStacks = 0; // 채찍 폭풍 회전 스택
     this.spinStackTimer = 0; // 스택이 사라지기까지 남은 시간
@@ -89,6 +93,7 @@ export class Player {
     this.stunTimer -= dt;
     this.invincibleTimer -= dt;
     this.dodgeTimer -= dt;
+    this.recoilTimer -= dt;
     this.dashCooldownTimer -= dt;
     this.specialCooldownTimer -= dt;
     this.slamReadyTimer -= dt;

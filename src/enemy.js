@@ -55,6 +55,7 @@ export class Enemy {
     this.flight = null;
     this.held = false; // 철퇴 폭풍으로 붙잡혀 돌려지고 있으면 true (위치는 flailStorm.js 가 정함)
     this.blast = null; // 날려진 뒤 벽·바닥에 닿아 터질 폭발 정보 (combat.js 가 한 번 처리)
+    this.pullLockTimer = 0; // 방금 당긴 적은 이 시간 동안 다시 당길 수 없음 (pullChain.repullLock)
     this.grabbable = true; // false 면 철퇴 폭풍이 붙잡지 못함 (보스 본체 등)
     this.push = null; // 정해진 x 까지 미끄러지듯 밀려나는 중이면 { x, speed, stun } (내리꽂기)
   }
@@ -71,6 +72,7 @@ export class Enemy {
     }
 
     this.flashTimer -= dt;
+    this.pullLockTimer -= dt;
     updateStatus(this, dt);
     if (!this.alive) return;
     if (this.held || this.pull || this.push || this.flight) this.ai?.interrupt(); // 붙잡힘·끌려옴·밀림·공중 상태는 제어 효과라 돌진도 끊김

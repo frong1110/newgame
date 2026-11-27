@@ -6,7 +6,12 @@ import { moveAndCollide } from './physics.js';
 export class PlayerSlam {
   // 사슬 이동이 끝났을 때 (chain.js 가 호출). 내리꽂기 스킬이 있으면 잠깐 동안 공격 키로 내리꽂을 수 있다
   onChainArrive(chain) {
-    if (chain === this.chain && this.stats.chain.slamAfterZip) this.slamReadyTimer = this.stats.slam.readyTime;
+    const C = this.stats.chain;
+    if (chain === this.chain && C.slamAfterZip) this.slamReadyTimer = this.stats.slam.readyTime;
+    if (chain === this.chain && C.recoilEnabled) {
+      this.recoilTimer = C.recoilWindow; // 반동: 도착 직후 첫 공격 강화 + 잠깐 무적
+      this.dodgeTimer = Math.max(this.dodgeTimer, C.recoilInvincible);
+    }
   }
 
   startSlam() {
