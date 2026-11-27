@@ -101,10 +101,10 @@ export function resolveCombat(player, enemies, effects, hitstop) {
         if (player.usesChainWeapon) emitTag(hit.max ? 'releaseHit' : 'tipHit', { enemy: e, damage: hit.damage, point: hit.point });
       }
     }
-    // 요요 투척으로 던져진 적이 벽에 부딪힘: 더 큰 충격
-    if (e.flight?.wallHit) {
-      yoyoImpact(effects, e.flight.C, e.flight.wallHit.x, e.flight.wallHit.y, e.flight.C.yoyoWallImpactMul);
-      e.flight.wallHit = null;
+    // 요요 투척: 벽에 부딪힘(더 큰 충격)·도착 마무리 타격 이펙트
+    if (e.yoyoFx) {
+      yoyoImpact(effects, e.yoyoFx.C, e.yoyoFx.x, e.yoyoFx.y, e.yoyoFx.mul);
+      e.yoyoFx = null;
     }
     // 던져져 날아가는 적(공중 상태) → 다른 적 (회전 투척). 띄워진 적은 피해 없음
     if (e.flight && e.flight.damage > 0) {
@@ -116,6 +116,8 @@ export function resolveCombat(player, enemies, effects, hitstop) {
           hitstop.t = T.hitstop;
           if (T.kind === 'yoyo') yoyoImpact(effects, T.C, (e.x + e.w / 2 + other.x + other.w / 2) / 2, (e.y + e.h / 2 + other.y + other.h / 2) / 2, 1); // 요요 투척 적중 임팩트
           // 요요 투척: 던진 적도 다른 적에 부딪히면 추가 피해 (구간당 상대마다 1회)
+          // 돌아오는 길에 부딪힌 적은 휘감겨 함께 끌려옴 (최대 yoyoDragMax 마리, 보스 본체·붙잡을 수 없는 적 제외)
+          if (T.kind === 'yoyo' && T.leg === 'back' && T.dragged.length < T.C.yoyoDragMax && !other.boss && other.grabbable !== false && !T.dragged.includes(other)) T.dragged.push(other);
           if (T.bumpDamage && !T.bumped.has(other)) {
             T.bumped.add(other);
             e.takeHit(T.bumpDamage, -(Math.sign(e.vx) || 1), 0, 0, `${T.hitId}-bump-${T.bumped.size}`);
