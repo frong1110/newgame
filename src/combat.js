@@ -116,8 +116,8 @@ export function resolveCombat(player, enemies, effects, hitstop) {
           hitstop.t = T.hitstop;
           if (T.kind === 'yoyo') yoyoImpact(effects, T.C, (e.x + e.w / 2 + other.x + other.w / 2) / 2, (e.y + e.h / 2 + other.y + other.h / 2) / 2, 1); // 요요 투척 적중 임팩트
           // 요요 투척: 던진 적도 다른 적에 부딪히면 추가 피해 (구간당 상대마다 1회)
-          // 돌아오는 길에 부딪힌 적은 휘감겨 함께 끌려옴 (최대 yoyoDragMax 마리, 보스 본체·붙잡을 수 없는 적 제외)
-          if (T.kind === 'yoyo' && T.leg === 'back' && T.dragged.length < T.C.yoyoDragMax && !other.boss && other.grabbable !== false && !T.dragged.includes(other)) T.dragged.push(other);
+          // 돌아오는 길에 부딪힌 적은 휘감겨 함께 끌려옴 (일반 적 yoyoDragMax(1)마리. 보스 본체·붙잡을 수 없는 적·`yoyoDraggable: false` 인 적(엘리트·방패형) 제외)
+          if (T.kind === 'yoyo' && T.leg === 'back' && T.dragged.length < T.C.yoyoDragMax && !other.boss && other.stats.yoyoDraggable !== false && other.grabbable !== false && !T.dragged.includes(other)) T.dragged.push(other);
           if (T.bumpDamage && !T.bumped.has(other)) {
             T.bumped.add(other);
             e.takeHit(T.bumpDamage, -(Math.sign(e.vx) || 1), 0, 0, `${T.hitId}-bump-${T.bumped.size}`);

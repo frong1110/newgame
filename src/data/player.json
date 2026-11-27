@@ -328,7 +328,7 @@
     "yoyoReturnSpeed": 1100,
     "yoyoMaxTime": 0.8,
     "yoyoArcHeight": 20,
-    "yoyoDragMax": 3,
+    "yoyoDragMax": 1,
     "yoyoFinishDamage": 1,
     "yoyoFinishHeight": 70,
     "yoyoFinishHang": 0.5,
