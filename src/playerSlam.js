@@ -8,10 +8,27 @@ export class PlayerSlam {
   onChainArrive(chain) {
     const C = this.stats.chain;
     if (chain === this.chain && C.slamAfterZip) this.slamReadyTimer = this.stats.slam.readyTime;
+    if (chain === this.chain && C.hunterEnabled) this.hunterTimer = C.hunterWindow; // 천장 사냥꾼: 이후 착지 때 범위 공격
     if (chain === this.chain && C.recoilEnabled) {
       this.recoilTimer = C.recoilWindow; // 반동: 도착 직후 첫 공격 강화 + 잠깐 무적
       this.dodgeTimer = Math.max(this.dodgeTimer, C.recoilInvincible);
     }
+  }
+
+  // 천장 사냥꾼: 사슬로 날아간 뒤 공중에서 착지하면 발밑에 충격파 (내리꽂기 충격파 처리를 그대로 씀)
+  hunterLanding() {
+    const C = this.stats.chain;
+    this.hunterTimer = 0;
+    const cx = this.x + this.w / 2;
+    this.slamImpact = {
+      ...this.stats.slam,
+      damage: C.hunterDamage * this.chainDamage,
+      x: cx,
+      y: this.y + this.h,
+      left: cx - C.hunterRadius,
+      right: cx + C.hunterRadius,
+      hitId: `hunter-${++this.slamCount}`,
+    };
   }
 
   startSlam() {

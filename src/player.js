@@ -70,6 +70,10 @@ export class Player {
     this.execBuffSwing = -1; // 강화가 적용 중인 휘두르기 id
     this.storeCharges = 0; // 쳐내기 축적 충전 수 (쳐낸 투사체 + 적 접촉). 방출 피해에 반영
     this.releaseStore = 0;
+    this.hunterTimer = 0; // 천장 사냥꾼(이동 갈래 3단계): 사슬 이동 뒤 착지 충격파가 남아 있는 시간
+    this.dashCharges = 1; // 사슬 대시 충전 수 (chain.charges 까지, chain.rechargeTime 마다 1개 충전)
+    this.dashChargeMax = 1;
+    this.dashChargeTimer = 0;
     this.recoilTimer = 0; // 반동(이동 갈래 2단계): 사슬 이동 직후 첫 공격 강화 남은 시간
     this.recoilSwing = -1; // 강화가 적용 중인 휘두르기 id
     this.storedShots = 0; // 쳐내기 축적: 분동에 저장된 투사체 수
@@ -94,6 +98,8 @@ export class Player {
     this.invincibleTimer -= dt;
     this.dodgeTimer -= dt;
     this.recoilTimer -= dt;
+    this.hunterTimer -= dt;
+    this.updateDashCharges(dt);
     this.dashCooldownTimer -= dt;
     this.specialCooldownTimer -= dt;
     this.slamReadyTimer -= dt;
@@ -112,7 +118,8 @@ export class Player {
       } else if (this.canDash(stunned)) this.useDash(inputDir, inputY);
     }
     // --- 특수 버튼: 사슬 당기기 (사슬 무기일 때). ↑↓ 로 위아래·대각선 조준 ---
-    this.holdingUp = !stunned && Input.isDown('ArrowUp'); // 회전 투척: 당기는 동안 ↑ 면 띄우기
+    this.holdingUp = !stunned && Input.isDown('ArrowUp'); // 요요 투척: 당기는 동안 ↑ 면 띄우기
+    this.holdingForward = !stunned && Input.isDown(this.facing > 0 ? 'ArrowRight' : 'ArrowLeft'); // 요요 투척: 앞 + 당기기
     // 결박 갈래: 묶인 적이 2명 이상이면 C 가 당기기 대신 끌어모으기 (팽팽한 줄: 충돌, 사슬 감옥: 폭발)
     if (Input.wasPressed(SPECIAL_KEY) && this.canUseSpecialChain(stunned) && this.specialCooldownTimer <= 0 && this.bindPull?.tryStart()) {
       this.attackTimer = 0;
@@ -226,7 +233,10 @@ export class Player {
     this.vy = Math.min(this.vy + C.gravity * dt, C.maxFallSpeed);
     const wasOnGround = this.onGround;
     moveAndCollide(this, world, dt);
-    if (this.onGround && !wasOnGround) this.squash = C.landSquash;
+    if (this.onGround && !wasOnGround) {
+      this.squash = C.landSquash;
+      if (this.hunterTimer > 0) this.hunterLanding(); // 천장 사냥꾼: 사슬 이동 뒤 착지하면 범위 공격
+    }
 
     this.squash = approach(this.squash, 0, C.squashRecovery * dt);
   }
@@ -237,7 +247,10 @@ export class Player {
     const [dx, dy] = this.aim(inputDir, inputY, !throwSkill);
     if (dx !== 0) this.facing = Math.sign(dx);
     this.pullChain.start(this, dx, dy);
-    if (throwSkill) this.pullChain.launchWanted = this.holdingUp;
+    if (throwSkill) {
+      this.pullChain.launchWanted = this.holdingUp;
+      this.pullChain.forwardWanted = inputDir !== 0; // 앞(바라보는 쪽 포함 좌우) 입력으로 시작한 당기기는 요요 투척
+    }
   }
 
   // 적과 부딪혔을 때. fromDir: 적 → 플레이어 방향 (+1 / -1)

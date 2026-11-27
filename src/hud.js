@@ -9,8 +9,8 @@ export function drawHUD(ctx, canvas, { player, enemies, skillTree, room, isTouch
   ctx.fillText(`weapon: ${player.usesChainWeapon ? '사슬' : '검'}${player.usesChainWeapon ? `   당기기(C): ${player.flail.active ? 'storm' : player.pullChain.active ? player.pullChain.phase : player.specialCooldownTimer > 0 ? '...' : 'ready'}` : ''}`, 12, 40);
   const comboLabel = player.attackTimer > 0 ? `${player.comboStep + 1}/${player.weapon.combo.length} ${player.step.name}` : '-';
   ctx.fillText(`combo: ${comboLabel}`, 12, 58);
-  const dashReady = player.dashCooldownTimer <= 0 && (player.usesChain || player.onGround || player.airDashesUsed < player.stats.dash.maxAirDashes);
-  ctx.fillText(`${player.usesChain ? 'chain' : 'dash'}: ${player.isDashing ? 'GO' : player.chain.active ? player.chain.phase : dashReady ? 'ready' : '...'}${player.dodgeTimer > 0 ? ' (무적)' : ''}`, 12, 76);
+  const dashReady = player.dashCooldownTimer <= 0 && (player.usesChain ? player.dashCharges > 0 : player.onGround || player.airDashesUsed < player.stats.dash.maxAirDashes);
+  ctx.fillText(`${player.usesChain ? 'chain' : 'dash'}: ${player.isDashing ? 'GO' : player.chain.active ? player.chain.phase : dashReady ? 'ready' : '...'}${player.usesChain ? ` x${player.dashCharges}` : ''}${player.dodgeTimer > 0 ? ' (무적)' : ''}`, 12, 76);
   if (player.chargeOn) ctx.fillText(`회전: 차지 ${Math.round(player.chargeLevel * 100)}%${player.weapon.storeEnabled ? `  충전 ${player.storeCharges}/${player.weapon.storeMax} (투사체 ${player.storedShots})` : ''}${player.stormOn ? `  스택 ${player.spinStacks}/${player.weapon.stormMaxStacks}${player.stormMaxed ? ' MAX' : ''}` : ''}`, 12, 112);
   ctx.fillText(`room: ${room}   enemies: ${enemies.filter((e) => e.alive).length}/${enemies.length}`, 12, 94);
 

@@ -18,7 +18,7 @@ export class PlayerDash {
 
   canDash(stunned) {
     if (stunned || this.isDashing || this.chain.active || this.pullChain.active || this.dashCooldownTimer > 0) return false;
-    if (this.usesChain) return true; // 사슬은 대기시간만 있고 공중 횟수 제한 없음
+    if (this.usesChain) return this.dashCharges > 0; // 사슬은 충전 수만 있고 공중 횟수 제한 없음
     return this.onGround || this.airDashesUsed < this.stats.dash.maxAirDashes;
   }
 
@@ -39,6 +39,7 @@ export class PlayerDash {
     this.comboTimer = 0;
     this.ghostTimer = 0;
     if (this.usesChain) {
+      this.dashCharges--;
       this.chain.start(this, dx, dy);
       return;
     }
@@ -49,6 +50,17 @@ export class PlayerDash {
     this.dashCooldownTimer = D.cooldown;
     this.dodgeTimer = D.duration + D.invincibleExtra;
     if (!this.onGround) this.airDashesUsed++;
+  }
+
+  // 사슬 대시 충전: 최대 chain.charges 개, 하나씩 chain.rechargeTime 마다 찬다 (이동 갈래 1단계: 충전 2회·재사용 대기 -30%)
+  updateDashCharges(dt) {
+    const C = this.stats.chain;
+    if (C.charges > this.dashChargeMax) this.dashCharges += C.charges - this.dashChargeMax; // 충전 상한이 늘면 그만큼 바로 채움
+    this.dashChargeMax = C.charges;
+    this.dashCharges = Math.min(this.dashCharges, C.charges);
+    if (this.dashCharges >= C.charges) { this.dashChargeTimer = C.rechargeTime; return; }
+    this.dashChargeTimer -= dt;
+    if (this.dashChargeTimer <= 0) { this.dashCharges++; this.dashChargeTimer = C.rechargeTime; }
   }
 
   endDash() {

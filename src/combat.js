@@ -100,7 +100,14 @@ export function resolveCombat(player, enemies, effects, hitstop) {
         if (other === e || !other.alive || !overlaps(e, other)) continue;
         const T = e.flight;
         if (T.group != null && other.flight?.group === T.group) continue; // 같이 날린 적끼리는 서로 피해 없음
-        if (other.takeHit(T.damage, Math.sign(e.vx) || 1, T.knockbackX, T.knockbackY, T.hitId)) hitstop.t = T.hitstop;
+        if (other.takeHit(T.damage, Math.sign(e.vx) || 1, T.knockbackX, T.knockbackY, T.hitId)) {
+          hitstop.t = T.hitstop;
+          // 요요 투척: 던진 적도 다른 적에 부딪히면 추가 피해 (구간당 상대마다 1회)
+          if (T.bumpDamage && !T.bumped.has(other)) {
+            T.bumped.add(other);
+            e.takeHit(T.bumpDamage, -(Math.sign(e.vx) || 1), 0, 0, `${T.hitId}-bump-${T.bumped.size}`);
+          }
+        }
       }
     }
     // 적 몸통 → 플레이어 (경직 중인 적은 공격 판정 없음). 돌격형이 근접으로 휘두르는 영역도 같음
