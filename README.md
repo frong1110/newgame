@@ -1,7 +1,7 @@
 # newgame
 game development with claude ai
 
-현재 버전: **0.6.4** — 변경 기록은 [CHANGELOG.md](CHANGELOG.md). 게임 화면 위쪽 가운데에도 버전이 표시됩니다.
+현재 버전: **0.6.5** — 변경 기록은 [CHANGELOG.md](CHANGELOG.md). 게임 화면 위쪽 가운데에도 버전이 표시됩니다.
 
 ## 플레이
 **https://frong1110.github.io/newgame/**

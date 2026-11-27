@@ -17,6 +17,7 @@ import { BindPull } from './bindPull.js';
 import { Projectiles } from './projectiles.js';
 import { TagEffects } from './tagEffects.js';
 import { drawHUD, drawVersion } from './hud.js';
+import { drawHudSlots, trackHudMouse } from './hudSlots.js';
 import { drawMenu, drawStageIntro, startButtonRect, stageButtonRect, hitRect } from './menuUI.js';
 
 const VERSION = __APP_VERSION__; // package.json 의 version (vite.config.js 에서 넣어 줌)
@@ -67,6 +68,7 @@ let treeCursor = 0; // 스킬 트리 화면에서 키보드로 고른 스킬 순
 let treePage = 0; // 스킬 트리 화면 페이지 (0 무기·이동 트리, 1 공용 증강 태그). T 로 바꾼다
 let pendingClick = null; // 캔버스 좌표로 바꾼 마우스 클릭
 
+const hudMouse = trackHudMouse(canvas); // 하단 HUD 툴팁용 마우스 위치
 canvas.addEventListener('click', (e) => {
   const r = canvas.getBoundingClientRect();
   pendingClick = { x: ((e.clientX - r.left) / r.width) * canvas.width, y: ((e.clientY - r.top) / r.height) * canvas.height };
@@ -319,6 +321,7 @@ function render() {
   player.draw(ctx, view);
   effects.drawOver(ctx, view);
   drawHUD(ctx, canvas, { player, enemies, skillTree, room, isTouch });
+  drawHudSlots(ctx, canvas, player, isTouch ? null : hudMouse(), isTouch);
 }
 
 function renderOverlay() {
