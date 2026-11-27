@@ -168,3 +168,6 @@ node tests/compare.cjs /tmp/base.json /tmp/after.json
 
 ## 근접형·방 조각 (`?level=stage1`)
 - 근접형: 가까이 가면 idle → windup(0.35) → active(0.12) → recover(0.6) 순환, 맞으면 플레이어 피격(무적 시작). 방 조각 4개: 적 전멸 후 문에 닿으면 cells → pit → labor → gallery → cells 로 이동(적 종류: 각 방 설명은 CLAUDE.md).
+
+## 시작 화면 (주소에 ?level= 없이)
+- 처음엔 mode 'menu'(게임 시작 → Enter → 스테이지 선택 → Enter) → mode 'intro' 동안 플레이어가 입력해도 움직이지 않고 적도 멈춤, `stageIntroTime` 뒤 'play'. 플레이 중 Esc → 다시 'menu'. `?level=...` 이면 처음부터 'play'.
