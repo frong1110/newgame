@@ -121,6 +121,12 @@ export class Chain {
 
       const hook = { x: this.hx - C.hookSize / 2, y: this.hy - C.hookSize / 2, w: C.hookSize, h: C.hookSize };
       const enemy = enemies.find((e) => e.alive && overlaps(hook, e));
+      if (enemy && C.onEnemy === 'pull' && (enemy.boss || enemy.pullLockTimer > 0)) {
+        // 당기기 면역: 보스 본체, 방금 당긴 적(같은 적은 repullLock 초 동안 다시 못 당김). 맞은 것처럼 번쩍이고 사슬은 되감김
+        enemy.flashTimer = enemy.stats.hitFlashTime;
+        this.phase = 'retract';
+        return;
+      }
       if (enemy) {
         this.target = enemy;
         enemy.flashTimer = enemy.stats.hitFlashTime;
@@ -270,6 +276,10 @@ export class Chain {
       p.vx = 0;
       p.vy = -C.attachBounce; // 적에게 붙은 뒤 살짝 떠서 이어서 공격하기 좋게
       p.airDashesUsed = 0;
+      if (C.recoilEnabled) {
+        enemy.stunTimer = Math.max(enemy.stunTimer, C.recoilStun); // 반동: 걸어 날아간 적은 경직되고 하던 공격이 취소됨
+        enemy.ai?.interrupt();
+      }
       this.phase = null;
       p.onChainArrive?.(this);
       return;
@@ -347,6 +357,7 @@ export class Chain {
         const dir = Math.sign(this.hx - cx) || p.facing;
         if (enemy.takeHit(C.pullDamage * p.chainDamage, dir, C.pullKnockbackX, C.pullKnockbackY, hitId)) this.hitstop = C.hitstop;
         enemy.stunTimer = Math.max(enemy.stunTimer, C.pullStun);
+        if (C.repullLock) enemy.pullLockTimer = C.repullLock;
         p.facing = dir;
       }
       this.phase = null;

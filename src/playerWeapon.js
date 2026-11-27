@@ -236,6 +236,7 @@ export class PlayerWeapon {
     this.attackTimer = this.attackDuration;
     this.attackBufferTimer = 0;
     this.attackId++;
+    if (this.recoilTimer > 0) { this.recoilSwing = this.attackId; this.recoilTimer = 0; } // 반동: 사슬 이동 직후 첫 공격
   }
 
   // 공격 입력·콤보 진행

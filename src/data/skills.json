@@ -222,7 +222,7 @@
         {
           "id": "dash_chain",
           "name": "사슬",
-          "description": "대시 대신 사슬을 던져, 걸린 곳으로 바로 날아감 (적이면 붙으며 피해)",
+          "description": "사슬을 던져 걸린 곳으로 날아감 (적이면 붙으며 피해)",
           "requires": [
             "dash_diagonal"
           ],
@@ -239,15 +239,34 @@
           ]
         },
         {
-          "id": "dash_slam",
-          "name": "내리꽂기",
-          "description": "사슬로 이동한 직후 공격하면 땅에 내리꽂으며 주변에 큰 피해",
+          "id": "dash_recoil",
+          "name": "반동",
+          "description": "이동 직후 첫 공격 +50%, 적 0.6초 경직, 도착 0.2초 무적",
           "requires": [
             "dash_chain"
           ],
           "pos": [
             0,
             2
+          ],
+          "effects": [
+            {
+              "stat": "chain.recoilEnabled",
+              "op": "set",
+              "value": true
+            }
+          ]
+        },
+        {
+          "id": "dash_slam",
+          "name": "내리꽂기",
+          "description": "사슬로 이동한 직후 공격하면 땅에 내리꽂으며 주변에 큰 피해",
+          "requires": [
+            "dash_recoil"
+          ],
+          "pos": [
+            0,
+            3
           ],
           "effects": [
             {

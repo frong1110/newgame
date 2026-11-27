@@ -4,7 +4,7 @@
 //   spinCharge.js (분동 갈래: 회전 차지·쳐내기 축적·채찍 폭풍)
 import { PLAYER, GAME } from './data/index.js';
 import { Input } from './input.js';
-import { moveAndCollide, approach } from './physics.js';
+import { moveAndCollide, approach, oneWayTopUnder } from './physics.js';
 import { Chain } from './chain.js';
 import { ATTACK_KEY, SPECIAL_KEY, DASH_KEYS } from './controls.js';
 import { applyMixins } from './mixin.js';
@@ -68,6 +68,10 @@ export class Player {
     this.releaseMax = false;
     this.execBuffTimer = 0; // 처형 태그 3단계: 다음 공격 강화 남은 시간
     this.execBuffSwing = -1; // 강화가 적용 중인 휘두르기 id
+    this.storeCharges = 0; // 쳐내기 축적 충전 수 (쳐낸 투사체 + 적 접촉). 방출 피해에 반영
+    this.releaseStore = 0;
+    this.recoilTimer = 0; // 반동(이동 갈래 2단계): 사슬 이동 직후 첫 공격 강화 남은 시간
+    this.recoilSwing = -1; // 강화가 적용 중인 휘두르기 id
     this.storedShots = 0; // 쳐내기 축적: 분동에 저장된 투사체 수
     this.spinStacks = 0; // 채찍 폭풍 회전 스택
     this.spinStackTimer = 0; // 스택이 사라지기까지 남은 시간
@@ -89,6 +93,7 @@ export class Player {
     this.stunTimer -= dt;
     this.invincibleTimer -= dt;
     this.dodgeTimer -= dt;
+    this.recoilTimer -= dt;
     this.dashCooldownTimer -= dt;
     this.specialCooldownTimer -= dt;
     this.slamReadyTimer -= dt;
@@ -189,7 +194,10 @@ export class Player {
       if (this.coyoteTimer <= 0 && this.jumpsUsed === 0) this.jumpsUsed = 1;
     }
 
-    if (Input.wasPressed('Space')) this.jumpBufferTimer = C.jumpBuffer;
+    // ↓ + 점프: 한 방향 발판 위에서 그 발판을 통과해 내려간다 (발이 발판 아래로 내려갈 때까지만 충돌을 끔)
+    const dropped = Input.wasPressed('Space') && Input.isDown('ArrowDown') && !stunned && this.onGround && this.dropThrough(world);
+    if (dropped) this.jumpBufferTimer = 0;
+    else if (Input.wasPressed('Space')) this.jumpBufferTimer = C.jumpBuffer;
     else this.jumpBufferTimer -= dt;
 
     if (this.jumpBufferTimer > 0 && !stunned) {
@@ -233,6 +241,16 @@ export class Player {
   }
 
   // 적과 부딪혔을 때. fromDir: 적 → 플레이어 방향 (+1 / -1)
+  dropThrough(world) {
+    const top = oneWayTopUnder(this, world);
+    if (top === null) return false;
+    this.dropTop = top;
+    this.vy = this.stats.dropThroughSpeed;
+    this.onGround = false;
+    this.coyoteTimer = 0;
+    return true;
+  }
+
   hurt(fromDir) {
     if (this.isInvincible) return false; // 피격 무적 또는 대시 회피 중
     const H = this.stats.hurt;

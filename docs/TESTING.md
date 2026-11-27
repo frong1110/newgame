@@ -171,3 +171,11 @@ node tests/compare.cjs /tmp/base.json /tmp/after.json
 
 ## 시작 화면 (주소에 ?level= 없이)
 - 처음엔 mode 'menu'(게임 시작 → Enter → 스테이지 선택 → Enter) → mode 'intro' 동안 플레이어가 입력해도 움직이지 않고 적도 멈춤, `stageIntroTime` 뒤 'play'. 플레이 중 Esc → 다시 'menu'. `?level=...` 이면 처음부터 'play'.
+
+## 발판 내려가기 (`?level=gallery`)
+- 발판 위에서 ArrowDown 을 누른 채 Space → 발판 아래로 통과해 아래 바닥/발판에 착지(`dropTop` 은 통과 뒤 null). 땅 위에서 ↓+Space 는 그냥 점프, ↓ 없이 Space 는 점프. 모바일은 `?touch=1` 로 같은 키 코드가 들어가는지 확인.
+
+## 설계안 반영 (0.6.2)
+- 당기기: 적을 앞 48px 에 세우고 stunTimer≈0.6, `enemy.pullLockTimer`=2 동안 재당기기 무시, `enemy.boss=true` 는 당겨지지 않음(사슬 되감김).
+- 쳐내기 축적(`cw_deflect_store`): 회전 차지 중 적에게 닿으면 `player.storeCharges` 증가(적당 0.5초에 1), 방출 때 `releaseStore` 로 넘어가 `chargeDamageMul` 에 ×(1+0.15×충전).
+- 반동(`dash_recoil`): 사슬 대시가 적에 도착하면 `enemy.stunTimer`≈0.59, `player.dodgeTimer`≈0.2, 바로 다음 휘두르기의 `chargeDamageMul`=1.5(한 번만).
