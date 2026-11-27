@@ -78,6 +78,12 @@ export class PlayerSpin {
     if (stunned || this.dashTimer > 0 || this.slamState) return this.interruptCharge();
 
     const down = Input.isDown(ATTACK_KEY);
+    if (this.chargeCooldownTimer > 0 && !this.charging) {
+      // 차징 공격 쿨타임 중에는 차징하지 않고 기본 공격으로 처리 (꾹 누르면 연속)
+      this.tapPending = false;
+      if (down || Input.wasPressed(ATTACK_KEY)) this.attackBufferTimer = W.inputBuffer;
+      return;
+    }
     if (Input.wasPressed(ATTACK_KEY)) {
       if (this.attackTimer > 0) this.attackBufferTimer = W.inputBuffer; // 휘두르는 중 누르면 다음 타 예약
       else {
@@ -144,6 +150,7 @@ export class PlayerSpin {
   releaseCharge_(enemies) {
     const W = this.weapon;
     const maxed = this.stormMaxed;
+    this.chargeCooldownTimer = W.chargeCooldown; // 차징 공격을 썼으므로 쿨타임 시작
     this.pendingRelease = this.chargeLevel;
     this.releaseMax = maxed;
     this.cancelCharge();

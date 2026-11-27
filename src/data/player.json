@@ -124,6 +124,7 @@
     "prisonRadiusBase": 70,
     "prisonRadiusPerTarget": 15,
     "chargeEnabled": false,
+    "chargeCooldown": 3.0,
     "chargeHoldThreshold": 0.15,
     "chargeTime": 0.8,
     "chargeReleaseStep": 2,

@@ -1,6 +1,11 @@
 {
   "tileSize": 32,
   "enemyChars": { "E": "dummy", "c": "charger", "a": "archer", "m": "clubGuard" },
+  "hudSlots": [
+    { "id": "attack", "name": "공격", "key": "X", "desc": "사슬을 휘두른다. 짧게 누르면 기본 공격. 회전 차지 스킬이 있으면 꾹 눌러 차징 공격." },
+    { "id": "pull", "name": "당기기", "key": "C", "desc": "사슬을 던져 적을 앞으로 끌어온다. 요요 투척이 있으면 앞 + C 로 던졌다 되감고, ↑ + C 는 띄우기." },
+    { "id": "dash", "name": "대시", "key": "Shift", "desc": "짧게 돌진한다(무적). 사슬 대시 스킬이 있으면 사슬을 걸어 날아간다." }
+  ],
   "stageIntroTime": 2.2,
   "stageMenu": [
     { "id": "stage1", "name": "버려진 감옥", "sub": "1스테이지" },

@@ -70,6 +70,7 @@ export class Player {
     this.execBuffSwing = -1; // 강화가 적용 중인 휘두르기 id
     this.storeCharges = 0; // 쳐내기 축적 충전 수 (쳐낸 투사체 + 적 접촉). 방출 피해에 반영
     this.releaseStore = 0;
+    this.chargeCooldownTimer = 0; // 차징 공격을 쓴 뒤 다음 차징까지 (chainWeapon.chargeCooldown). 쿨타임 중에는 기본 공격
     this.hunterTimer = 0; // 천장 사냥꾼(이동 갈래 3단계): 사슬 이동 뒤 착지 충격파가 남아 있는 시간
     this.dashCharges = 1; // 사슬 대시 충전 수 (chain.charges 까지, chain.rechargeTime 마다 1개 충전)
     this.dashChargeMax = 1;
@@ -98,6 +99,7 @@ export class Player {
     this.invincibleTimer -= dt;
     this.dodgeTimer -= dt;
     this.recoilTimer -= dt;
+    this.chargeCooldownTimer -= dt;
     this.hunterTimer -= dt;
     this.updateDashCharges(dt);
     this.dashCooldownTimer -= dt;
