@@ -1,16 +1,14 @@
-// 하단 HUD 슬롯 (설계안 '하단 HUD'): 화면 아래 가운데에 공격(X) · 당기기(C) · 대시(Shift) 3칸.
+// 하단 HUD 슬롯 (설계안 '하단 HUD'): 화면 왼쪽 아래에 공격(X) · 당기기(C) · 대시(Shift) 3칸.
 // 칸마다 아이콘, 오른쪽 아래 키, 재사용 대기 중에는 어두운 부채꼴과 남은 초, 마우스를 올리면 툴팁(이름·키·설명·쿨타임).
 //   공격: 짧게 누르면 기본 공격(쿨타임 없음). 회전 차지 스킬이 있으면 차징 공격을 쓴 뒤 chargeCooldown 동안 슬롯에 쿨타임, 차지 중엔 칸 아래에 게이지
 //   당기기: pullChain.cooldown. 대시: 사슬 대시면 충전 수 배지(왼쪽 위)와, 충전이 0일 때만 부채꼴·숫자
 // 이름·키·설명은 game.json 의 hudSlots, 쿨타임은 플레이어 수치에서 읽는다.
 import { GAME } from './data/index.js';
 
-const SIZE = 60, GAP = 14, BOTTOM = 22;
+const SIZE = 60, GAP = 14, BOTTOM = 22, LEFT = 16, TOUCH_LIFT = 150; // 터치 기기는 왼쪽 아래 방향 패드와 겹치지 않게 위로 올린다
 
-function layout(canvas) {
-  const n = GAME.hudSlots.length;
-  const total = n * SIZE + (n - 1) * GAP;
-  return GAME.hudSlots.map((s, i) => ({ ...s, x: canvas.width / 2 - total / 2 + i * (SIZE + GAP), y: canvas.height - BOTTOM - SIZE }));
+function layout(canvas, lift = 0) {
+  return GAME.hudSlots.map((s, i) => ({ ...s, x: LEFT + i * (SIZE + GAP), y: canvas.height - BOTTOM - SIZE - lift }));
 }
 
 // 슬롯 하나의 현재 상태 { cd(남은 초), total(전체 초), gauge(0~1 또는 null), badge(숫자 또는 null), dim, active, extra(툴팁 쿨타임 줄) }
@@ -106,9 +104,9 @@ export function trackHudMouse(canvas) {
 }
 
 // mouse: 캔버스 좌표의 마우스 위치(없으면 null) — 칸 위면 툴팁을 그린다
-export function drawHudSlots(ctx, canvas, player, mouse) {
+export function drawHudSlots(ctx, canvas, player, mouse, isTouch = false) {
   let hovered = null;
-  for (const s of layout(canvas)) {
+  for (const s of layout(canvas, isTouch ? TOUCH_LIFT : 0)) {
     const st = stateOf(s.id, player);
     const { x, y } = s;
     ctx.globalAlpha = st.dim ? 0.45 : 1;

@@ -188,4 +188,4 @@ node tests/compare.cjs /tmp/base.json /tmp/after.json
 - 메뉴에서 `버려진 감옥`을 시작 → 적 전멸 후 문에 닿으면 mode 'intro'(큰 제목 '버려진 감옥', 소제목 다음 방 이름) 동안 입력해도 안 움직이고 `stageIntroTime` 뒤 'play'. `?level=stage1` 직접 시작은 배너 없이 바로 이동.
 
 ## 하단 HUD 슬롯 (0.6.5)
-- 화면 아래 가운데 3칸이 보이고, 당기기·차징 후·충전 0 대시에서 부채꼴+초가 줄어듦, 칸 위에 마우스를 올리면 툴팁. 회전 차지(`cw_spin_charge`): X 꾹 → 놓으면 `player.chargeCooldownTimer`≈3, 쿨타임 중 X 꾹은 `charging` 이 켜지지 않고 기본 공격(회귀 재생의 연속 차지 장면은 쿨타임 때문에 달라질 수 있음).
+- 화면 왼쪽 아래 3칸이 보이고, 당기기·차징 후·충전 0 대시에서 부채꼴+초가 줄어듦, 칸 위에 마우스를 올리면 툴팁. 회전 차지(`cw_spin_charge`): X 꾹 → 놓으면 `player.chargeCooldownTimer`≈3, 쿨타임 중 X 꾹은 `charging` 이 켜지지 않고 기본 공격(회귀 재생의 연속 차지 장면은 쿨타임 때문에 달라질 수 있음).

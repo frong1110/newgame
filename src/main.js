@@ -321,7 +321,7 @@ function render() {
   player.draw(ctx, view);
   effects.drawOver(ctx, view);
   drawHUD(ctx, canvas, { player, enemies, skillTree, room, isTouch });
-  drawHudSlots(ctx, canvas, player, isTouch ? null : hudMouse());
+  drawHudSlots(ctx, canvas, player, isTouch ? null : hudMouse(), isTouch);
 }
 
 function renderOverlay() {
