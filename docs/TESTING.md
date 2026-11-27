@@ -171,3 +171,6 @@ node tests/compare.cjs /tmp/base.json /tmp/after.json
 
 ## 시작 화면 (주소에 ?level= 없이)
 - 처음엔 mode 'menu'(게임 시작 → Enter → 스테이지 선택 → Enter) → mode 'intro' 동안 플레이어가 입력해도 움직이지 않고 적도 멈춤, `stageIntroTime` 뒤 'play'. 플레이 중 Esc → 다시 'menu'. `?level=...` 이면 처음부터 'play'.
+
+## 발판 내려가기 (`?level=gallery`)
+- 발판 위에서 ArrowDown 을 누른 채 Space → 발판 아래로 통과해 아래 바닥/발판에 착지(`dropTop` 은 통과 뒤 null). 땅 위에서 ↓+Space 는 그냥 점프, ↓ 없이 Space 는 점프. 모바일은 `?touch=1` 로 같은 키 코드가 들어가는지 확인.

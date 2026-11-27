@@ -30,8 +30,21 @@ function resolveX(b, world) {
   return false;
 }
 
+// 발 밑이 한 방향 발판뿐이면 그 윗면 y, 아니면 null (단단한 땅이 같이 있으면 내려갈 수 없다)
+export function oneWayTopUnder(b, world) {
+  const T = GAME.tileSize;
+  const ty = Math.floor((b.y + b.h + 0.5) / T);
+  let top = null;
+  for (let tx = Math.floor(b.x / T); tx <= Math.floor((b.x + b.w - 0.01) / T); tx++) {
+    if (world.isSolid(tx, ty)) return null;
+    if (world.isOneWay?.(tx, ty)) top = ty * T;
+  }
+  return top;
+}
+
 function resolveY(b, world, prevBottom) {
   const T = GAME.tileSize;
+  if (b.dropTop != null && prevBottom > b.dropTop + 0.01) b.dropTop = null; // 발이 발판 아래로 내려갔으면 통과 상태 해제
   const left = Math.floor(b.x / T);
   const right = Math.floor((b.x + b.w - 0.01) / T);
   if (b.vy > 0) {
@@ -39,7 +52,7 @@ function resolveY(b, world, prevBottom) {
     for (let tx = left; tx <= right; tx++) {
       if (world.isSolid(tx, ty)) { b.y = ty * T - b.h; b.vy = 0; b.onGround = true; return; }
       // 한 방향 발판: 이전 프레임 발바닥이 발판 윗면 위에 있었을 때만 선다
-      if (world.isOneWay?.(tx, ty) && prevBottom <= ty * T + 0.01) { b.y = ty * T - b.h; b.vy = 0; b.onGround = true; return; }
+      if (world.isOneWay?.(tx, ty) && prevBottom <= ty * T + 0.01 && b.dropTop !== ty * T) { b.y = ty * T - b.h; b.vy = 0; b.onGround = true; return; }
     }
   } else if (b.vy < 0) {
     const ty = Math.floor(b.y / T);
