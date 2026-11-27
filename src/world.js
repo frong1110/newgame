@@ -5,6 +5,11 @@ import { GAME } from './data/index.js';
 
 export class World {
   constructor(rows) {
+    this.load(rows);
+  }
+
+  // 맵을 (다시) 읽는다. 방 전환 때 같은 World 객체를 그대로 쓰도록 제자리에서 바꾼다
+  load(rows) {
     this.rows = rows;
     this.height = rows.length;
     this.width = rows[0].length;

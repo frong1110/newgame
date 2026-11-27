@@ -26,7 +26,10 @@ const ctx = canvas.getContext('2d');
 
 // 맵: 기본은 결박 시험장. 주소에 ?level=level1 을 붙이면 예전 시험장 (회귀 재생용)
 DIFFICULTY.level = Math.max(0, Math.min(DIFFICULTY.levels.length - 1, Number(new URLSearchParams(location.search).get('difficulty')) || 0)); // ?difficulty=N
-const world = new World(LEVELS[new URLSearchParams(location.search).get('level')] ?? LEVELS.bind);
+const levelParam = new URLSearchParams(location.search).get('level');
+const roomList = GAME.stages[levelParam] ?? null; // ?level=stage1 이면 방 조각을 차례로 (문으로 다음 방)
+let roomIndex = 0;
+const world = new World(roomList ? LEVELS[roomList[0]] : (LEVELS[levelParam] ?? LEVELS.bind));
 const skillTree = new SkillTree(PLAYER);
 const player = new Player(world.spawn.x, world.spawn.y, skillTree.stats);
 const enemies = world.enemySpawns.map((pos) => new Enemy(pos.type, pos));
@@ -103,6 +106,7 @@ function updateTree() {
 function resetRun() {
   skillTree.reset();
   applySkills();
+  if (roomList) loadRoom(0);
   player.respawn(world.spawn.x, world.spawn.y);
   enemies.forEach((e) => e.reset());
   projectiles.list = [];
@@ -112,9 +116,19 @@ function resetRun() {
   mode = 'play';
 }
 
+// 방 조각 i 를 불러온다: 맵·적을 제자리에서 바꾼다 (다른 모듈이 enemies 배열을 들고 있어서 새로 만들지 않음)
+function loadRoom(i) {
+  roomIndex = i;
+  world.load(LEVELS[roomList[i]]);
+  enemies.length = 0;
+  enemies.push(...world.enemySpawns.map((pos) => new Enemy(pos.type, pos)));
+}
+
 function nextRoom() {
   room++;
-  enemies.forEach((e) => e.reset());
+  // 방 조각 목록이면 다음 조각을 불러옴 (끝나면 처음으로. 스테이지 종료 연출은 아직 없음)
+  if (roomList) loadRoom((roomIndex + 1) % roomList.length);
+  else enemies.forEach((e) => e.reset());
   mode = 'play';
 }
 
@@ -141,6 +155,7 @@ function updateDoors() {
   if (world.doors.some((d) => overlaps(b, d))) {
     nextRoom();
     player.respawn(world.spawn.x, world.spawn.y);
+    cam.x = 0; cam.y = 0;
     projectiles.list = [];
     bindPull.state = null;
   }

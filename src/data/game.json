@@ -1,6 +1,7 @@
 {
   "tileSize": 32,
-  "enemyChars": { "E": "dummy", "c": "charger", "a": "archer" },
+  "enemyChars": { "E": "dummy", "c": "charger", "a": "archer", "m": "clubGuard" },
+  "stages": { "stage1": ["cells", "pit", "labor", "gallery"] },
   "fixedStep": 0.008333333333333333,
   "maxFrameTime": 0.25,
   "cameraFollow": 8,

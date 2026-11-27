@@ -82,5 +82,32 @@
       "projectileSpeed": 900,
       "projectileRange": 640
     }
+  },
+  "clubGuard": {
+    "width": 30,
+    "height": 30,
+    "maxHp": 150,
+    "moveSpeed": 40,
+    "gravity": 2200,
+    "maxFallSpeed": 900,
+    "knockbackDecel": 1400,
+    "stunTime": 0.35,
+    "hitFlashTime": 0.1,
+    "respawnTime": 0,
+    "thrownGravity": 700,
+    "color": "#a8743a",
+    "bindCooldown": 1.5,
+    "ai": {
+      "type": "melee",
+      "aggroRange": 420,
+      "aggroDy": 70,
+      "approachSpeed": 70,
+      "meleeRange": 42,
+      "meleeReach": 46,
+      "windupTime": 0.35,
+      "activeTime": 0.12,
+      "recoverTime": 0.6,
+      "cooldown": 0.3
+    }
   }
 }
